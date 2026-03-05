@@ -196,13 +196,22 @@ func (sm *SettingsManager) GetAll() (*AllSettings, error) {
 		}
 	}
 
-	// Decrypt GitHub token
+	// Decrypt GitHub token (user-configured via UI)
 	if sm.settings.Encrypted.GitHubToken != nil {
 		plaintext, err := decrypt(sm.key, sm.settings.Encrypted.GitHubToken)
 		if err != nil {
 			log.Printf("[settings] failed to decrypt GitHub token: %v", err)
 		} else if plaintext != nil {
 			all.GitHubToken = string(plaintext)
+			all.GitHubTokenSource = GitHubTokenSourceSettings
+		}
+	}
+
+	// Fall back to FEEDBACK_GITHUB_TOKEN env var if no user token is stored
+	if all.GitHubToken == "" {
+		if envToken := FeedbackGitHubToken(); envToken != "" {
+			all.GitHubToken = envToken
+			all.GitHubTokenSource = GitHubTokenSourceEnv
 		}
 	}
 
@@ -258,14 +267,14 @@ func (sm *SettingsManager) SaveAll(all *AllSettings) error {
 		sm.settings.Encrypted.APIKeys = nil
 	}
 
-	// Encrypt GitHub token
-	if all.GitHubToken != "" {
+	// Encrypt GitHub token — skip if sourced from env var (don't persist ephemeral env tokens to disk)
+	if all.GitHubToken != "" && all.GitHubTokenSource != GitHubTokenSourceEnv {
 		enc, err := encrypt(sm.key, []byte(all.GitHubToken))
 		if err != nil {
 			return fmt.Errorf("failed to encrypt GitHub token: %w", err)
 		}
 		sm.settings.Encrypted.GitHubToken = enc
-	} else {
+	} else if all.GitHubTokenSource != GitHubTokenSourceEnv {
 		sm.settings.Encrypted.GitHubToken = nil
 	}
 

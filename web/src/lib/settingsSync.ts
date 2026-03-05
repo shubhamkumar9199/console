@@ -12,6 +12,7 @@ import {
   STORAGE_KEY_CUSTOM_THEMES,
   STORAGE_KEY_ACCESSIBILITY,
   STORAGE_KEY_GITHUB_TOKEN,
+  STORAGE_KEY_GITHUB_TOKEN_SOURCE,
   STORAGE_KEY_NOTIFICATION_CONFIG,
   STORAGE_KEY_TOUR_COMPLETED,
 } from './constants'
@@ -84,6 +85,12 @@ export function collectFromLocalStorage(): Partial<AllSettings> {
     try { result.githubToken = atob(githubToken) } catch { result.githubToken = githubToken }
   }
 
+  // GitHub token source ("settings" or "env")
+  const githubTokenSource = localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN_SOURCE)
+  if (githubTokenSource === 'settings' || githubTokenSource === 'env') {
+    result.githubTokenSource = githubTokenSource
+  }
+
   // Notification config (JSON)
   const notifications = localStorage.getItem(STORAGE_KEY_NOTIFICATION_CONFIG)
   if (notifications) {
@@ -134,6 +141,11 @@ export function restoreToLocalStorage(settings: AllSettings): void {
 
   if (settings.githubToken) {
     localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN, btoa(settings.githubToken))
+  }
+
+  // Persist token source so the UI can show a badge for env-sourced tokens
+  if (settings.githubTokenSource) {
+    localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN_SOURCE, settings.githubTokenSource)
   }
 
   if (settings.notifications) {
