@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "last_updated": "2026-03-13T03:47:07Z",
+  "last_updated": "2026-03-14T03:46:37Z",
   "rolling_window_days": 30,
   "categories": {
     "other": {
       "merged": 55,
-      "closed": 59,
-      "acceptance_rate": 0.48,
+      "closed": 68,
+      "acceptance_rate": 0.45,
       "status": "normal",
-      "last_evaluated": "2026-03-13T03:47:07Z"
+      "last_evaluated": "2026-03-14T03:46:37Z"
     },
     "security": {
       "merged": 12,
@@ -19,17 +19,17 @@
     },
     "resilience": {
       "merged": 11,
-      "closed": 11,
-      "acceptance_rate": 0.5,
+      "closed": 17,
+      "acceptance_rate": 0.39,
       "status": "normal",
-      "last_evaluated": "2026-03-13T03:47:07Z"
+      "last_evaluated": "2026-03-14T03:46:37Z"
     },
     "performance": {
       "merged": 4,
-      "closed": 0,
-      "acceptance_rate": 1,
+      "closed": 1,
+      "acceptance_rate": 0.8,
       "status": "normal",
-      "last_evaluated": "2026-03-06T03:46:36Z"
+      "last_evaluated": "2026-03-14T03:46:37Z"
     },
     "consistency": {
       "merged": 11,
@@ -54,10 +54,10 @@
     },
     "ui-design": {
       "merged": 3,
-      "closed": 7,
-      "acceptance_rate": 0.3,
+      "closed": 8,
+      "acceptance_rate": 0.27,
       "status": "normal",
-      "last_evaluated": "2026-03-10T03:46:12Z"
+      "last_evaluated": "2026-03-14T03:46:37Z"
     },
     "testing": {
       "merged": 9,
@@ -276,19 +276,26 @@
       "total_closed": 119,
       "categories_blocked": [],
       "categories_boosted": []
+    },
+    {
+      "date": "2026-03-14",
+      "total_merged": 119,
+      "total_closed": 136,
+      "categories_blocked": [],
+      "categories_boosted": []
     }
   ],
   "rotation_weights": {
-    "other": 0.72,
+    "other": 0.68,
     "security": 0.75,
-    "resilience": 0.75,
-    "performance": 1.5,
+    "resilience": 0.59,
+    "performance": 1.2,
     "consistency": 0.92,
     "dom-errors": 1.2,
     "a11y": 0.68,
-    "ui-design": 0.45,
+    "ui-design": 0.41,
     "testing": 0.71
   },
-  "max_issues_override": 3,
+  "max_issues_override": 2,
   "pr_guidance": "Keep PRs small and focused. Smaller PRs have higher acceptance rates."
 }
