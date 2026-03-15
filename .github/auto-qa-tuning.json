@@ -1,42 +1,42 @@
 {
   "schema_version": 1,
-  "last_updated": "2026-03-14T03:46:37Z",
+  "last_updated": "2026-03-15T03:57:40Z",
   "rolling_window_days": 30,
   "categories": {
     "other": {
       "merged": 55,
-      "closed": 68,
-      "acceptance_rate": 0.45,
+      "closed": 69,
+      "acceptance_rate": 0.44,
       "status": "normal",
-      "last_evaluated": "2026-03-14T03:46:37Z"
+      "last_evaluated": "2026-03-15T03:57:40Z"
     },
     "security": {
       "merged": 12,
-      "closed": 12,
-      "acceptance_rate": 0.5,
+      "closed": 13,
+      "acceptance_rate": 0.48,
       "status": "normal",
-      "last_evaluated": "2026-03-13T03:47:07Z"
+      "last_evaluated": "2026-03-15T03:57:40Z"
     },
     "resilience": {
       "merged": 11,
-      "closed": 17,
-      "acceptance_rate": 0.39,
+      "closed": 18,
+      "acceptance_rate": 0.38,
       "status": "normal",
-      "last_evaluated": "2026-03-14T03:46:37Z"
+      "last_evaluated": "2026-03-15T03:57:40Z"
     },
     "performance": {
       "merged": 4,
-      "closed": 1,
-      "acceptance_rate": 0.8,
+      "closed": 2,
+      "acceptance_rate": 0.67,
       "status": "normal",
-      "last_evaluated": "2026-03-14T03:46:37Z"
+      "last_evaluated": "2026-03-15T03:57:40Z"
     },
     "consistency": {
       "merged": 11,
-      "closed": 7,
-      "acceptance_rate": 0.61,
+      "closed": 9,
+      "acceptance_rate": 0.55,
       "status": "normal",
-      "last_evaluated": "2026-03-13T03:47:07Z"
+      "last_evaluated": "2026-03-15T03:57:40Z"
     },
     "dom-errors": {
       "merged": 4,
@@ -283,14 +283,21 @@
       "total_closed": 136,
       "categories_blocked": [],
       "categories_boosted": []
+    },
+    {
+      "date": "2026-03-15",
+      "total_merged": 119,
+      "total_closed": 142,
+      "categories_blocked": [],
+      "categories_boosted": []
     }
   ],
   "rotation_weights": {
-    "other": 0.68,
-    "security": 0.75,
-    "resilience": 0.59,
-    "performance": 1.2,
-    "consistency": 0.92,
+    "other": 0.66,
+    "security": 0.72,
+    "resilience": 0.57,
+    "performance": 1.01,
+    "consistency": 0.83,
     "dom-errors": 1.2,
     "a11y": 0.68,
     "ui-design": 0.41,
