@@ -45,12 +45,14 @@ func (s *rbacTestStore) UpdateUserRole(userID uuid.UUID, role string) error {
 
 func TestRBACUpdateUserRole_ForbiddenForNonAdmin(t *testing.T) {
 	env := setupTestEnv(t)
+	adminUser := &models.User{
+		ID:   testAdminUserID,
+		Role: string(models.UserRoleViewer),
+	}
+
 	store := &rbacTestStore{
 		users: map[uuid.UUID]*models.User{
-			testAdminUserID: {
-				ID:   testAdminUserID,
-				Role: string(models.UserRoleViewer),
-			},
+			testAdminUserID: adminUser,
 		},
 	}
 
@@ -72,13 +74,14 @@ func TestRBACUpdateUserRole_ForbiddenForNonAdmin(t *testing.T) {
 func TestRBACUpdateUserRole_Success(t *testing.T) {
 	env := setupTestEnv(t)
 	targetUserID := uuid.New()
+	adminUser := &models.User{
+		ID:   testAdminUserID,
+		Role: string(models.UserRoleAdmin),
+	}
 
 	store := &rbacTestStore{
 		users: map[uuid.UUID]*models.User{
-			testAdminUserID: {
-				ID:   testAdminUserID,
-				Role: string(models.UserRoleAdmin),
-			},
+			testAdminUserID: adminUser,
 		},
 	}
 
@@ -101,12 +104,14 @@ func TestRBACUpdateUserRole_Success(t *testing.T) {
 
 func TestRBACListConsoleUsers_Success(t *testing.T) {
 	env := setupTestEnv(t)
+	adminUser := &models.User{
+		ID:   testAdminUserID,
+		Role: string(models.UserRoleAdmin),
+	}
+
 	store := &rbacTestStore{
 		users: map[uuid.UUID]*models.User{
-			testAdminUserID: {
-				ID:   testAdminUserID,
-				Role: string(models.UserRoleAdmin),
-			},
+			testAdminUserID: adminUser,
 		},
 		listUsers: []models.User{
 			{ID: testAdminUserID, GitHubLogin: "admin", Role: string(models.UserRoleAdmin)},
