@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useMissions, type Mission } from '../../../hooks/useMissions'
 import { useDemoMode } from '../../../hooks/useDemoMode'
+import { isNetlifyDeployment, setDemoMode } from '../../../lib/demoMode'
 import { useResolutions, detectIssueSignature, type Resolution } from '../../../hooks/useResolutions'
 import { cn } from '../../../lib/cn'
 import { MAX_MESSAGE_SIZE_CHARS } from '../../../lib/constants'
@@ -678,10 +679,33 @@ export function MissionChat({ mission, isFullScreen = false, fontSize = 'base' a
           </div>
         ) : mission.status === 'saved' ? (
           <div className="flex flex-col gap-2">
-            {isDemoMode ? (
+            {isNetlifyDeployment ? (
               <p className="text-xs text-center text-muted-foreground px-2">
-                Mission imported. Install KubeStellar Console locally to run it against your clusters.
+                Mission imported.{' '}
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-install'))}
+                  className="underline hover:text-foreground transition-colors"
+                >
+                  Install KubeStellar Console locally
+                </button>{' '}
+                to run it against your clusters.
               </p>
+            ) : isDemoMode ? (
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-agent-setup'))}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Install Agent &amp; Run Mission
+                </button>
+                <button
+                  onClick={() => setDemoMode(false, true)}
+                  className="text-xs text-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Already have the agent? Turn off demo mode
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => runSavedMission(mission.id)}
