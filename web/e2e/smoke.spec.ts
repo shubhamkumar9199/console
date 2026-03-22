@@ -13,6 +13,7 @@ import { test, expect, Page, ConsoleMessage } from '@playwright/test'
 const EXPECTED_ERROR_PATTERNS = [
   /Failed to fetch/i, // Network errors in demo mode
   /WebSocket/i, // WebSocket not available in tests
+  /can't establish a connection/i, // Firefox WebSocket connection errors
   /ResizeObserver/i, // ResizeObserver loop warnings
   /validateDOMNesting/i, // Already tracked by Auto-QA DOM errors check
   /act\(\)/i, // React testing warnings
@@ -21,6 +22,9 @@ const EXPECTED_ERROR_PATTERNS = [
   /Loading chunk/i, // Expected during lazy loading
   /demo-token/i, // Demo mode messages
   /localhost:8585/i, // Agent connection attempts in demo mode
+  /127\.0\.0\.1:8585/i, // Agent connection attempts (IP form)
+  /Cross-Origin Request Blocked/i, // CORS errors when backend/agent not running
+  /Notification permission/i, // Firefox blocks notification requests outside user gestures
 ]
 
 function isExpectedError(message: string): boolean {

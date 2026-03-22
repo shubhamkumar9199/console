@@ -1,7 +1,17 @@
 import { test, expect } from '@playwright/test'
 
+// Login tests require a backend with OAuth enabled.
+// In CI (frontend-only preview builds), /login redirects to the dashboard
+// because there is no auth layer. Skip the whole suite when the backend
+// health endpoint is unreachable.
 test.describe('Login Page', () => {
   test.use({ storageState: { cookies: [], origins: [] } }) // Clear auth for login tests
+
+  test.beforeEach(async ({ page }) => {
+    // Probe backend health — skip login tests if backend is not running
+    const backendUp = await page.request.get('/health').then(r => r.ok()).catch(() => false)
+    test.skip(!backendUp, 'Backend not running — login tests require OAuth mode')
+  })
 
   test('displays login page correctly', async ({ page }) => {
     await page.goto('/login')
