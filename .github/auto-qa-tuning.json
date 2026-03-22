@@ -72,14 +72,12 @@
     "size_acceptance": {},
     "type_acceptance": {},
     "common_rejection_reasons": [
-      "- PR #2617: Closing stalled copilot PR (0 additions). Taking over with a manual fix.",
-      "- PR #2618: Closing stalled copilot PR (0 additions). Taking over with a manual fix.",
-      "- PR #2610: Closing stalled copilot PR (0 additions). Taking over with a manual fix.",
-      "- PR #2611: Closing stalled copilot PR (0 additions). Taking over with a manual fix.",
-      "- PR #2598: Closing stalled copilot PR (0 additions). Taking over with a manual fix."
+      "- PR #3121: ## ❌ PR Title Verification Failed",
+      "Your PR title does not follow the required format.",
+      "- PR #3118: ## ❌ PR Title Verification Failed"
     ],
     "best_change_type": "bug_fix",
-    "last_report_date": "2026-03-15"
+    "last_report_date": "2026-03-22"
   },
   "cncf_insights": {
     "last_scan_date": "2026-03-18",
