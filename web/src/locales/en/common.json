@@ -259,7 +259,7 @@
     },
     "github": {
       "title": "GitHub Integration",
-      "subtitle": "Configure GitHub API access for the GitHub Activity card",
+      "subtitle": "Configure GitHub API access for all GitHub features",
       "testingToken": "Testing token...",
       "tokenError": "Token Error",
       "tokenValid": "Token Valid",
@@ -283,14 +283,12 @@
       "classicInstructions": "No scopes needed for public repos. For private repos, check the 'repo' scope.",
       "securityWarning": "Token is stored in encrypted server-side settings. Use a token with minimal permissions and set an expiration date.",
       "envBadge": "from .env",
-      "feedbackToken": "Feedback GitHub Token (FEEDBACK_GITHUB_TOKEN)",
-      "feedbackTokenLabel": "Feedback Token",
-      "feedbackTokenDescription": "Used by the feedback / bug submission integration. Requires a PAT with repo scope. This should stay separate from the main GitHub Activity token.",
+      "feedbackToken": "GitHub Token (FEEDBACK_GITHUB_TOKEN)",
+      "feedbackTokenDescription": "Used for all GitHub operations: activity card, bug/feature submission, CI monitoring, and missions. Requires a PAT with repo scope.",
       "feedbackTokenEnvSource": "Currently sourced from .env.",
       "feedbackTokenNotConfigured": "Not Configured",
-      "feedbackTokenNotConfiguredHint": "Bug/feature submission is disabled",
-      "feedbackTokenSetupHint": "To enable bug/feature submission, add a GitHub PAT with repo scope here or set FEEDBACK_GITHUB_TOKEN in your .env file.",
-      "feedbackRateLimit": "{{remaining}}/{{limit}} requests remaining · resets at {{time}}"
+      "feedbackTokenNotConfiguredHint": "GitHub features are limited (60 requests/hour, no issue submission)",
+      "feedbackTokenSetupHint": "To enable full GitHub integration, add a GitHub PAT with repo scope here or set FEEDBACK_GITHUB_TOKEN in your .env file."
     },
     "predictions": {
       "title": "Predictive Failure Detection",

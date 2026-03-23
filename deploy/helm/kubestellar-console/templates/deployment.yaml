@@ -154,13 +154,6 @@ spec:
                   name: {{ .Values.claude.existingSecret | default (include "kubestellar-console.fullname" .) }}
                   key: {{ .Values.claude.existingSecretKey | default "claude-api-key" }}
             {{- end }}
-            {{- if or .Values.githubToken.existingSecret .Values.githubToken.token }}
-            - name: GITHUB_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.githubToken.existingSecret | default (include "kubestellar-console.fullname" .) }}
-                  key: {{ .Values.githubToken.existingSecretKey | default "github-token" }}
-            {{- end }}
             {{- if or .Values.feedbackGithubToken.existingSecret .Values.feedbackGithubToken.token }}
             - name: FEEDBACK_GITHUB_TOKEN
               valueFrom:

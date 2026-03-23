@@ -142,8 +142,8 @@ func (h *RewardsHandler) GetGitHubRewards(c *fiber.Ctx) error {
 func (h *RewardsHandler) resolveToken() string {
 	token := h.githubToken
 	if sm := settings.GetSettingsManager(); sm != nil {
-		if all, err := sm.GetAll(); err == nil && all.GitHubToken != "" {
-			token = all.GitHubToken
+		if all, err := sm.GetAll(); err == nil && all.FeedbackGitHubToken != "" {
+			token = all.FeedbackGitHubToken
 		}
 	}
 	return token

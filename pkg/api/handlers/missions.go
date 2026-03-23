@@ -7,12 +7,13 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+
+	"github.com/kubestellar/console/pkg/settings"
 )
 
 const (
@@ -204,7 +205,7 @@ func (h *MissionsHandler) githubGet(url string, clientToken string) (*http.Respo
 	if clientToken != "" {
 		req.Header.Set("Authorization", "Bearer "+clientToken)
 		hasToken = true
-	} else if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+	} else if token := settings.ResolveGitHubTokenEnv(); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 		hasToken = true
 	}

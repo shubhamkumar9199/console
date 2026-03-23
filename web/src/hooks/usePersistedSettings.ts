@@ -157,7 +157,7 @@ export function usePersistedSettings() {
 
         if (isLocalStorageEmpty() && data) {
           // Cache was cleared — restore from backend file
-          const hasData = data.theme || data.aiMode || data.githubToken ||
+          const hasData = data.theme || data.aiMode || data.feedbackGithubToken ||
             Object.keys(data.apiKeys || {}).length > 0
           if (hasData) {
             restoreToLocalStorage(data)

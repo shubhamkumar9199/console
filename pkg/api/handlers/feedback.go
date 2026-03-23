@@ -73,85 +73,8 @@ func (h *FeedbackHandler) getEffectiveToken() string {
 	return h.githubToken
 }
 
-// HasToken handles GET /api/feedback/token/status — returns whether the
-// feedback GitHub token is configured (without exposing the token itself).
-func (h *FeedbackHandler) HasToken(c *fiber.Ctx) error {
-	token := h.getEffectiveToken()
-	source := "none"
-	if h.githubToken != "" {
-		source = "env"
-	}
-	if sm := settings.GetSettingsManager(); sm != nil {
-		if all, err := sm.GetAll(); err == nil && all.FeedbackGitHubToken != "" {
-			source = "settings"
-		}
-	}
-	return c.JSON(fiber.Map{
-		"hasToken": token != "",
-		"source":   source,
-	})
-}
-
-// SaveToken handles POST /api/feedback/token — saves a user-provided
-// feedback GitHub PAT to the encrypted server-side settings file.
-func (h *FeedbackHandler) SaveToken(c *fiber.Ctx) error {
-	var body struct {
-		Token string `json:"token"`
-	}
-	if err := c.BodyParser(&body); err != nil || body.Token == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Token is required",
-		})
-	}
-
-	sm := settings.GetSettingsManager()
-	if sm == nil {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"error": "Settings manager not available",
-		})
-	}
-
-	all, err := sm.GetAll()
-	if err != nil {
-		all = &settings.AllSettings{}
-	}
-	all.FeedbackGitHubToken = body.Token
-	all.FeedbackGitHubTokenSource = settings.GitHubTokenSourceSettings
-	if err := sm.SaveAll(all); err != nil {
-		log.Printf("[Feedback] Failed to save feedback token: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save token",
-		})
-	}
-
-	log.Printf("[Feedback] Feedback GitHub token saved to encrypted settings")
-	return c.JSON(fiber.Map{"success": true})
-}
-
-// DeleteToken handles DELETE /api/feedback/token — removes the user-provided
-// feedback GitHub PAT from server-side settings.
-func (h *FeedbackHandler) DeleteToken(c *fiber.Ctx) error {
-	sm := settings.GetSettingsManager()
-	if sm == nil {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"error": "Settings manager not available",
-		})
-	}
-
-	all, err := sm.GetAll()
-	if err != nil {
-		return c.JSON(fiber.Map{"success": true}) // Nothing to delete
-	}
-	all.FeedbackGitHubToken = ""
-	all.FeedbackGitHubTokenSource = ""
-	if err := sm.SaveAll(all); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to clear token",
-		})
-	}
-
-	return c.JSON(fiber.Map{"success": true})
-}
+// NOTE: HasToken, SaveToken, DeleteToken were removed — the consolidated
+// token is managed via /api/github/token/* endpoints in github_proxy.go.
 
 // CreateFeatureRequest creates a new feature request and GitHub issue
 func (h *FeedbackHandler) CreateFeatureRequest(c *fiber.Ctx) error {
@@ -1774,9 +1697,9 @@ func extractLinkedIssueNumbers(body string) []int {
 
 // LoadFeedbackConfig loads feedback configuration, preferring persisted settings
 // from the settings manager (user-configured via UI) and falling back to
-// environment variables (FEEDBACK_GITHUB_TOKEN, GITHUB_WEBHOOK_SECRET, etc.).
+// environment variables (FEEDBACK_GITHUB_TOKEN or GITHUB_TOKEN alias).
 func LoadFeedbackConfig() FeedbackConfig {
-	githubToken := os.Getenv("FEEDBACK_GITHUB_TOKEN")
+	githubToken := settings.ResolveGitHubTokenEnv()
 	if sm := settings.GetSettingsManager(); sm != nil {
 		if all, err := sm.GetAll(); err == nil && all.FeedbackGitHubToken != "" {
 			githubToken = all.FeedbackGitHubToken

@@ -139,7 +139,7 @@ export function FeatureRequestModal({ isOpen, onClose, initialTab, initialReques
     if (!isOpen || tokenCheckedRef.current || isDemoModeForced) return
     tokenCheckedRef.current = true
 
-    fetch(`${BACKEND_DEFAULT_URL}/api/feedback/token/status`, {
+    fetch(`${BACKEND_DEFAULT_URL}/api/github/token/status`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
     })

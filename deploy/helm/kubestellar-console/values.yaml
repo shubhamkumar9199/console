@@ -75,13 +75,9 @@ github:
     clientId: github-client-id
     clientSecret: github-client-secret
 
-# GitHub token for server-side API access (nightly E2E status, etc.)
-githubToken:
-  token: ""
-  existingSecret: ""
-  existingSecretKey: github-token
-
-# GitHub token for issue creation from the Contribute dialog (requires repo scope)
+# GitHub token for all server-side API access (activity card, feedback, CI, missions, rewards)
+# Requires a PAT with repo scope for full functionality.
+# Set via FEEDBACK_GITHUB_TOKEN env var (GITHUB_TOKEN also accepted as alias).
 feedbackGithubToken:
   token: ""
   existingSecret: ""

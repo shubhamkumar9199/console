@@ -163,6 +163,9 @@ func (sm *SettingsManager) GetAll() (*AllSettings, error) {
 		return DefaultAllSettings(), nil
 	}
 
+	// Migrate legacy GitHubToken → FeedbackGitHubToken if needed
+	sm.migrateLegacyGitHubToken()
+
 	all := &AllSettings{
 		AIMode:        sm.settings.Settings.AIMode,
 		Predictions:   sm.settings.Settings.Predictions,
@@ -198,38 +201,20 @@ func (sm *SettingsManager) GetAll() (*AllSettings, error) {
 	}
 
 	// Decrypt GitHub token (user-configured via UI)
-	if sm.settings.Encrypted.GitHubToken != nil {
-		plaintext, err := decrypt(sm.key, sm.settings.Encrypted.GitHubToken)
-		if err != nil {
-			log.Printf("[settings] failed to decrypt GitHub token: %v", err)
-		} else if plaintext != nil {
-			all.GitHubToken = string(plaintext)
-			all.GitHubTokenSource = GitHubTokenSourceSettings
-		}
-	}
-
-	// Fall back to GITHUB_TOKEN env var if no user token is stored
-	if all.GitHubToken == "" {
-		if envToken := os.Getenv("GITHUB_TOKEN"); envToken != "" {
-			all.GitHubToken = envToken
-			all.GitHubTokenSource = GitHubTokenSourceEnv
-		}
-	}
-
-	// Decrypt feedback GitHub token (user-configured via UI)
 	if sm.settings.Encrypted.FeedbackGitHubToken != nil {
 		plaintext, err := decrypt(sm.key, sm.settings.Encrypted.FeedbackGitHubToken)
 		if err != nil {
-			log.Printf("[settings] failed to decrypt feedback GitHub token: %v", err)
+			log.Printf("[settings] failed to decrypt GitHub token: %v", err)
 		} else if plaintext != nil {
 			all.FeedbackGitHubToken = string(plaintext)
 			all.FeedbackGitHubTokenSource = GitHubTokenSourceSettings
 		}
 	}
 
-	// Fall back to FEEDBACK_GITHUB_TOKEN env var if no user token is stored
+	// Fall back to env vars if no user token is stored
+	// Checks FEEDBACK_GITHUB_TOKEN first, then GITHUB_TOKEN as alias
 	if all.FeedbackGitHubToken == "" {
-		if envToken := FeedbackGitHubToken(); envToken != "" {
+		if envToken := ResolveGitHubTokenEnv(); envToken != "" {
 			all.FeedbackGitHubToken = envToken
 			all.FeedbackGitHubTokenSource = GitHubTokenSourceEnv
 		}
@@ -287,18 +272,10 @@ func (sm *SettingsManager) SaveAll(all *AllSettings) error {
 		sm.settings.Encrypted.APIKeys = nil
 	}
 
-	// Encrypt GitHub token — skip if sourced from env var (don't persist ephemeral env tokens to disk)
-	if all.GitHubToken != "" && all.GitHubTokenSource != GitHubTokenSourceEnv {
-		enc, err := encrypt(sm.key, []byte(all.GitHubToken))
-		if err != nil {
-			return fmt.Errorf("failed to encrypt GitHub token: %w", err)
-		}
-		sm.settings.Encrypted.GitHubToken = enc
-	} else if all.GitHubTokenSource != GitHubTokenSourceEnv {
-		sm.settings.Encrypted.GitHubToken = nil
-	}
+	// Clear legacy GitHubToken field on save (migrated to FeedbackGitHubToken)
+	sm.settings.Encrypted.GitHubToken = nil
 
-	// Encrypt feedback GitHub token — skip if sourced from env var
+	// Encrypt GitHub token — skip if sourced from env var (don't persist ephemeral env tokens to disk)
 	if all.FeedbackGitHubToken != "" && all.FeedbackGitHubTokenSource != GitHubTokenSourceEnv {
 		enc, err := encrypt(sm.key, []byte(all.FeedbackGitHubToken))
 		if err != nil {
@@ -375,6 +352,28 @@ func (sm *SettingsManager) MigrateFromConfigYaml(cp ConfigProvider) error {
 
 	log.Printf("[settings] migrated %d API key(s) from config.yaml", len(keys))
 	return sm.saveLocked()
+}
+
+// migrateLegacyGitHubToken moves the old GitHubToken encrypted field to
+// FeedbackGitHubToken if the latter is not yet set. This is a one-time
+// migration for users who had the separate "Personal Access Token" configured.
+// Must be called while sm.mu is held (at least RLock).
+func (sm *SettingsManager) migrateLegacyGitHubToken() {
+	if sm.settings == nil || sm.key == nil {
+		return
+	}
+	if sm.settings.Encrypted.GitHubToken == nil {
+		return // nothing to migrate
+	}
+	if sm.settings.Encrypted.FeedbackGitHubToken != nil {
+		// FeedbackGitHubToken already set — just clear the legacy field
+		sm.settings.Encrypted.GitHubToken = nil
+		return
+	}
+	// Copy legacy GitHubToken → FeedbackGitHubToken
+	sm.settings.Encrypted.FeedbackGitHubToken = sm.settings.Encrypted.GitHubToken
+	sm.settings.Encrypted.GitHubToken = nil
+	log.Printf("[settings] migrated legacy GitHubToken → FeedbackGitHubToken")
 }
 
 // ExportEncrypted returns the raw settings file contents for backup

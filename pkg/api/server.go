@@ -88,10 +88,11 @@ type Config struct {
 	DevUserLogin  string
 	DevUserEmail  string
 	DevUserAvatar string
-	// GitHub personal access token for dev mode profile lookup
+	// GitHubToken is the consolidated GitHub PAT used for all GitHub operations:
+	// API proxy (activity card, CI), feedback/issue creation, missions, and rewards.
+	// Resolved from FEEDBACK_GITHUB_TOKEN env var, falling back to GITHUB_TOKEN.
 	GitHubToken string
-	// Feature request/feedback configuration
-	FeedbackGitHubToken  string // PAT for creating issues
+	// Feature request/feedback configuration (repo targeting, not token)
 	GitHubWebhookSecret  string // Secret for validating GitHub webhooks
 	FeedbackRepoOwner    string // GitHub org/owner (e.g., "kubestellar")
 	FeedbackRepoName     string // GitHub repo name (e.g., "console")
@@ -823,9 +824,7 @@ func (s *Server) setupRoutes() {
 	// Feature requests and feedback routes
 	feedbackCfg := handlers.LoadFeedbackConfig()
 	feedback := handlers.NewFeedbackHandler(s.store, feedbackCfg)
-	api.Get("/feedback/token/status", feedback.HasToken)
-	api.Post("/feedback/token", feedback.SaveToken)
-	api.Delete("/feedback/token", feedback.DeleteToken)
+	// Feedback token routes removed — consolidated into /api/github/token/* endpoints
 	api.Post("/feedback/requests", feedback.CreateFeatureRequest)
 	api.Get("/feedback/requests", feedback.ListFeatureRequests)
 	api.Get("/feedback/queue", feedback.ListAllFeatureRequests)
@@ -846,7 +845,7 @@ func (s *Server) setupRoutes() {
 
 	// GitHub activity rewards (points for issues/PRs across configured orgs)
 	rewardsHandler := handlers.NewRewardsHandler(handlers.RewardsConfig{
-		GitHubToken: s.config.FeedbackGitHubToken,
+		GitHubToken: s.config.GitHubToken,
 		Orgs:        s.config.RewardsGitHubOrgs,
 	})
 	api.Get("/rewards/github", rewardsHandler.GetGitHubRewards)
@@ -1157,10 +1156,8 @@ func LoadConfigFromEnv() Config {
 		DevUserLogin:  getEnvOrDefault("DEV_USER_LOGIN", "dev-user"),
 		DevUserEmail:  getEnvOrDefault("DEV_USER_EMAIL", "dev@localhost"),
 		DevUserAvatar: getEnvOrDefault("DEV_USER_AVATAR", ""),
-		// GitHub token for dev mode profile fetching
-		GitHubToken: os.Getenv("GITHUB_TOKEN"),
-		// Feature request/feedback configuration
-		FeedbackGitHubToken: os.Getenv("FEEDBACK_GITHUB_TOKEN"),
+		// Consolidated GitHub token (FEEDBACK_GITHUB_TOKEN preferred, GITHUB_TOKEN as alias)
+		GitHubToken: settings.ResolveGitHubTokenEnv(),
 		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),
 		FeedbackRepoOwner:   getEnvOrDefault("FEEDBACK_REPO_OWNER", "kubestellar"),
 		FeedbackRepoName:    getEnvOrDefault("FEEDBACK_REPO_NAME", "console"),

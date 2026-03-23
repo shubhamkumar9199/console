@@ -74,13 +74,11 @@ export interface AllSettings {
 
   // Sensitive (decrypted in transit over localhost)
   apiKeys: Record<string, APIKeyEntry>
-  githubToken: string
+  /** Consolidated GitHub token for all operations (activity card, feedback, missions, rewards) */
   feedbackGithubToken?: string
   notifications: NotificationSecrets
 
-  /** Where the main GitHub token came from: "settings" (user UI), "env" (.env file), or undefined */
-  githubTokenSource?: 'settings' | 'env'
-  /** Where the feedback GitHub token came from: "settings" (user UI), "env" (.env file), or undefined */
+  /** Where the GitHub token came from: "settings" (user UI), "env" (.env file), or undefined */
   feedbackGithubTokenSource?: 'settings' | 'env'
 
   /** Per-dashboard stat block configurations (order, visibility, display mode) */

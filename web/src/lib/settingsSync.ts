@@ -13,6 +13,7 @@ import {
   STORAGE_KEY_ACCESSIBILITY,
   STORAGE_KEY_GITHUB_TOKEN,
   STORAGE_KEY_GITHUB_TOKEN_SOURCE,
+  STORAGE_KEY_GITHUB_TOKEN_DISMISSED,
   STORAGE_KEY_FEEDBACK_GITHUB_TOKEN,
   STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE,
   STORAGE_KEY_NOTIFICATION_CONFIG,
@@ -33,7 +34,6 @@ const LS_KEYS = {
   [STORAGE_KEY_THEME]: 'theme',
   [STORAGE_KEY_CUSTOM_THEMES]: 'customThemes',
   [STORAGE_KEY_ACCESSIBILITY]: 'accessibility',
-  [STORAGE_KEY_GITHUB_TOKEN]: 'githubToken',
   [STORAGE_KEY_FEEDBACK_GITHUB_TOKEN]: 'feedbackGithubToken',
   [STORAGE_KEY_NOTIFICATION_CONFIG]: 'notifications',
   [STORAGE_KEY_TOUR_COMPLETED]: 'tourCompleted',
@@ -83,24 +83,12 @@ export function collectFromLocalStorage(): Partial<AllSettings> {
   }
 
   // GitHub token (base64 encoded in localStorage)
-  const githubToken = localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN)
-  if (githubToken) {
-    try { result.githubToken = atob(githubToken) } catch { result.githubToken = githubToken }
-  }
-
-  // GitHub token source ("settings" or "env")
-  const githubTokenSource = localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN_SOURCE)
-  if (githubTokenSource === 'settings' || githubTokenSource === 'env') {
-    result.githubTokenSource = githubTokenSource
-  }
-
-  // Feedback GitHub token (base64 encoded in localStorage)
   const feedbackGithubToken = localStorage.getItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN)
   if (feedbackGithubToken) {
     try { result.feedbackGithubToken = atob(feedbackGithubToken) } catch { result.feedbackGithubToken = feedbackGithubToken }
   }
 
-  // Feedback GitHub token source ("settings" or "env")
+  // GitHub token source ("settings" or "env")
   const feedbackGithubTokenSource = localStorage.getItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE)
   if (feedbackGithubTokenSource === 'settings' || feedbackGithubTokenSource === 'env') {
     result.feedbackGithubTokenSource = feedbackGithubTokenSource
@@ -169,14 +157,10 @@ export function restoreToLocalStorage(settings: AllSettings): void {
     localStorage.setItem(STORAGE_KEY_ACCESSIBILITY, JSON.stringify(settings.accessibility))
   }
 
-  if (settings.githubToken) {
-    localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN, btoa(settings.githubToken))
-  }
-
-  // Persist token source so the UI can show a badge for env-sourced tokens
-  if (settings.githubTokenSource) {
-    localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN_SOURCE, settings.githubTokenSource)
-  }
+  // Clean up legacy main-token localStorage keys (consolidated into feedback token)
+  localStorage.removeItem(STORAGE_KEY_GITHUB_TOKEN)
+  localStorage.removeItem(STORAGE_KEY_GITHUB_TOKEN_SOURCE)
+  localStorage.removeItem(STORAGE_KEY_GITHUB_TOKEN_DISMISSED)
 
   if (settings.feedbackGithubToken) {
     localStorage.setItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN, btoa(settings.feedbackGithubToken))

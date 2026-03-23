@@ -39,7 +39,7 @@ var allowedGitHubPrefixes = []string{
 // /api/github/* and this handler forwards them to api.github.com/* with
 // the server-side token in the Authorization header.
 type GitHubProxyHandler struct {
-	// serverToken is the configured GITHUB_TOKEN from env
+	// serverToken is the configured FEEDBACK_GITHUB_TOKEN (or GITHUB_TOKEN alias) from env
 	serverToken string
 }
 
@@ -52,12 +52,12 @@ func NewGitHubProxyHandler(serverToken string) *GitHubProxyHandler {
 
 // resolveToken returns the best available GitHub token:
 // 1. User-saved token from encrypted settings file
-// 2. Server-configured GITHUB_TOKEN from env
+// 2. Server-configured FEEDBACK_GITHUB_TOKEN (or GITHUB_TOKEN alias) from env
 func (h *GitHubProxyHandler) resolveToken() string {
 	// Check user-saved settings first (may have a user-specific PAT)
 	if sm := settings.GetSettingsManager(); sm != nil {
-		if all, err := sm.GetAll(); err == nil && all.GitHubToken != "" {
-			return all.GitHubToken
+		if all, err := sm.GetAll(); err == nil && all.FeedbackGitHubToken != "" {
+			return all.FeedbackGitHubToken
 		}
 	}
 	return h.serverToken
@@ -200,7 +200,8 @@ func (h *GitHubProxyHandler) SaveToken(c *fiber.Ctx) error {
 	if err != nil {
 		all = &settings.AllSettings{}
 	}
-	all.GitHubToken = body.Token
+	all.FeedbackGitHubToken = body.Token
+	all.FeedbackGitHubTokenSource = settings.GitHubTokenSourceSettings
 	if err := sm.SaveAll(all); err != nil {
 		log.Printf("[GitHubProxy] Failed to save token: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -226,7 +227,8 @@ func (h *GitHubProxyHandler) DeleteToken(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(fiber.Map{"success": true}) // Nothing to delete
 	}
-	all.GitHubToken = ""
+	all.FeedbackGitHubToken = ""
+	all.FeedbackGitHubTokenSource = ""
 	if err := sm.SaveAll(all); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to clear token",
@@ -245,8 +247,11 @@ func (h *GitHubProxyHandler) HasToken(c *fiber.Ctx) error {
 		source = "env"
 	}
 	if sm := settings.GetSettingsManager(); sm != nil {
-		if all, err := sm.GetAll(); err == nil && all.GitHubToken != "" {
-			source = "settings"
+		if all, err := sm.GetAll(); err == nil && all.FeedbackGitHubToken != "" {
+			source = all.FeedbackGitHubTokenSource
+			if source == "" {
+				source = "settings"
+			}
 		}
 	}
 	return c.JSON(fiber.Map{

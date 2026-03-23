@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { GitPullRequest, GitBranch, Star, Users, Package, TrendingUp, AlertCircle, Clock, CheckCircle, XCircle, GitMerge, Settings, X, Plus, Check } from 'lucide-react'
-import { STORAGE_KEY_GITHUB_TOKEN, FETCH_EXTERNAL_TIMEOUT_MS } from '../../lib/constants'
+import { FETCH_EXTERNAL_TIMEOUT_MS } from '../../lib/constants'
 import { Button } from '../ui/Button'
 import { Skeleton } from '../ui/Skeleton'
 import { useDemoMode } from '../../hooks/useDemoMode'
@@ -125,14 +125,6 @@ function isStale(date: string, days: number = 30): boolean {
   return ageInDays > days
 }
 
-// Decode base64 encoded token from localStorage (Settings stores it encoded)
-const decodeToken = (encoded: string): string => {
-  try {
-    return atob(encoded)
-  } catch {
-    return encoded // Return as-is if not encoded (migration from old format)
-  }
-}
 
 // Default repository to show if none configured
 const DEFAULT_REPO = 'kubestellar/console'
@@ -257,9 +249,7 @@ function useGitHubActivity(config?: GitHubActivityConfig) {
   const repos = config?.repos?.length ? config.repos : [DEFAULT_REPO]
   const org = config?.org
   // Note: Token stored in localStorage base64 encoded - decode before use
-  const encodedToken = config?.token || localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN) || ''
-  const _token = encodedToken ? decodeToken(encodedToken) : ''
-  void _token // Token decoded and ready for authenticated GitHub API requests
+  // Token is injected server-side by the GitHub proxy — no client-side token needed
   const reposKey = useMemo(() => repos.join(','), [repos])
 
   const fetchGitHubData = async (isManualRefresh = false) => {

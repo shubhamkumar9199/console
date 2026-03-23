@@ -81,6 +81,8 @@ type EncryptedField struct {
 // EncryptedSettings groups all sensitive fields (stored encrypted on disk)
 type EncryptedSettings struct {
 	APIKeys             *EncryptedField `json:"apiKeys,omitempty"`
+	// GitHubToken is the legacy field — migrated to FeedbackGitHubToken at startup.
+	// Kept for JSON deserialization of old settings files; always nil after migration.
 	GitHubToken         *EncryptedField `json:"githubToken,omitempty"`
 	FeedbackGitHubToken *EncryptedField `json:"feedbackGithubToken,omitempty"`
 	Notifications       *EncryptedField `json:"notifications,omitempty"`
@@ -105,16 +107,16 @@ type AllSettings struct {
 
 	// Sensitive (decrypted for transit, encrypted at rest)
 	APIKeys             map[string]APIKeyEntry `json:"apiKeys"`
-	GitHubToken         string                 `json:"githubToken"`
+	// FeedbackGitHubToken is the single consolidated GitHub PAT used for all
+	// GitHub operations: API proxy (activity card, CI), feedback/issue creation,
+	// missions, and rewards.
 	FeedbackGitHubToken string                 `json:"feedbackGithubToken,omitempty"`
 	Notifications       NotificationSecrets    `json:"notifications"`
 
-	// GitHubTokenSource indicates where the main GitHub token came from:
+	// FeedbackGitHubTokenSource indicates where the GitHub token came from:
 	// "settings" = user-configured via UI (encrypted in settings file),
-	// "env" = auto-detected from environment,
+	// "env" = auto-detected from FEEDBACK_GITHUB_TOKEN (or GITHUB_TOKEN alias),
 	// "" = no token available.
-	GitHubTokenSource string `json:"githubTokenSource,omitempty"`
-	// FeedbackGitHubTokenSource indicates where the feedback token came from.
 	FeedbackGitHubTokenSource string `json:"feedbackGithubTokenSource,omitempty"`
 }
 
@@ -126,9 +128,13 @@ const (
 	GitHubTokenSourceEnv = "env"
 )
 
-// FeedbackGitHubToken returns the FEEDBACK_GITHUB_TOKEN env var if set.
-func FeedbackGitHubToken() string {
-	return os.Getenv("FEEDBACK_GITHUB_TOKEN")
+// ResolveGitHubTokenEnv returns the GitHub token from environment variables.
+// It checks FEEDBACK_GITHUB_TOKEN first (canonical), then GITHUB_TOKEN (alias).
+func ResolveGitHubTokenEnv() string {
+	if token := os.Getenv("FEEDBACK_GITHUB_TOKEN"); token != "" {
+		return token
+	}
+	return os.Getenv("GITHUB_TOKEN")
 }
 
 // APIKeyEntry holds a provider's API key and optional model override
