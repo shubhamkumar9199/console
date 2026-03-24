@@ -32,8 +32,6 @@ env:
   MAX_ISSUES_PER_RUN: 3
   # Hours to look back for errors
   LOOKBACK_HOURS: 2
-  # Seconds between Copilot assignments to avoid rate limiting
-  COPILOT_ASSIGNMENT_DELAY_S: 120
 
 permissions:
   contents: read
@@ -343,31 +341,16 @@ jobs:
 
               core.info(`Created issue #${issue.number}: ${title}`);
 
-              // Auto-assign Copilot coding agent
-              try {
-                await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/assignees', {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  assignees: ['copilot-swe-agent[bot]'],
-                  agent_assignment: {
-                    target_repo: `${context.repo.owner}/${context.repo.repo}`,
-                    base_branch: 'main',
-                  },
-                });
-                core.info(`Assigned Copilot to #${issue.number}`);
-              } catch (e) {
-                core.warning(`Could not assign Copilot to #${issue.number}: ${e.message}`);
-              }
+              // Queue for Copilot assignment (processed by copilot-queue.yml)
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['ai-queued'],
+              });
+              core.info(`#${issue.number}: added to Copilot queue`);
 
               created++;
-
-              // Throttle between Copilot assignments to avoid concurrent session failures.
-              const delaySeconds = parseInt(process.env.COPILOT_ASSIGNMENT_DELAY_S || '120');
-              if (created < maxIssues && delaySeconds > 0) {
-                core.info(`Waiting ${delaySeconds}s before next Copilot assignment...`);
-                await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-              }
             }
 
             core.info(`GA4 Error Monitor complete: ${created} issue(s) created from ${spikes.length} spike(s).`);
