@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Trash2, Server, Bell, BellOff, Bot, Slack, Webhook } from 'lucide-react'
+import { Trash2, Server, Bell, BellOff, Bot, Slack, Webhook, Siren, ShieldAlert } from 'lucide-react'
 import { useClusters } from '../../hooks/useMCP'
 import { BaseModal } from '../../lib/modals'
 import type {
@@ -149,7 +149,7 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
     })
   }
 
-  const addChannel = (type: 'browser' | 'slack' | 'webhook') => {
+  const addChannel = (type: AlertChannel['type']) => {
     setChannels(prev => [...prev, { type, enabled: true, config: {} }])
   }
 
@@ -469,6 +469,20 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                   <Webhook className="w-3 h-3" />
                   {t('alerts.webhook')}
                 </button>
+                <button
+                  onClick={() => addChannel('pagerduty')}
+                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
+                >
+                  <Siren className="w-3 h-3" />
+                  PagerDuty
+                </button>
+                <button
+                  onClick={() => addChannel('opsgenie')}
+                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
+                >
+                  <ShieldAlert className="w-3 h-3" />
+                  OpsGenie
+                </button>
               </div>
             </div>
 
@@ -483,6 +497,8 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                       {channel.type === 'browser' && <Bell className="w-4 h-4" />}
                       {channel.type === 'slack' && <Slack className="w-4 h-4" />}
                       {channel.type === 'webhook' && <Webhook className="w-4 h-4" />}
+                      {channel.type === 'pagerduty' && <Siren className="w-4 h-4" />}
+                      {channel.type === 'opsgenie' && <ShieldAlert className="w-4 h-4" />}
                       <span className="text-sm font-medium text-foreground capitalize">
                         {channel.type}
                       </span>
@@ -546,6 +562,34 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                       onChange={e =>
                         updateChannel(index, {
                           config: { ...channel.config, webhookUrl: e.target.value },
+                        })
+                      }
+                      className="w-full px-3 py-1.5 text-sm rounded bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  )}
+
+                  {channel.type === 'pagerduty' && (
+                    <input
+                      type="password"
+                      placeholder="PagerDuty Routing Key"
+                      value={channel.config.pagerdutyRoutingKey || ''}
+                      onChange={e =>
+                        updateChannel(index, {
+                          config: { ...channel.config, pagerdutyRoutingKey: e.target.value },
+                        })
+                      }
+                      className="w-full px-3 py-1.5 text-sm rounded bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  )}
+
+                  {channel.type === 'opsgenie' && (
+                    <input
+                      type="password"
+                      placeholder="OpsGenie API Key"
+                      value={channel.config.opsgenieApiKey || ''}
+                      onChange={e =>
+                        updateChannel(index, {
+                          config: { ...channel.config, opsgenieApiKey: e.target.value },
                         })
                       }
                       className="w-full px-3 py-1.5 text-sm rounded bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"

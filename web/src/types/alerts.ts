@@ -21,7 +21,7 @@ export type AlertSeverity = 'critical' | 'warning' | 'info'
 export type AlertStatus = 'firing' | 'resolved'
 
 // Alert channel types
-export type AlertChannelType = 'browser' | 'slack' | 'webhook'
+export type AlertChannelType = 'browser' | 'slack' | 'webhook' | 'pagerduty' | 'opsgenie'
 
 // Alert condition configuration
 export interface AlertCondition {
@@ -46,6 +46,8 @@ export interface AlertChannel {
     slackWebhookUrl?: string // direct webhook URL (inline config)
     slackChannel?: string
     webhookUrl?: string // for generic webhook type
+    pagerdutyRoutingKey?: string
+    opsgenieApiKey?: string
   }
 }
 
@@ -113,6 +115,8 @@ export interface NotificationConfig {
   emailUsername?: string
   emailPassword?: string
   webhookUrl?: string
+  pagerdutyRoutingKey?: string
+  opsgenieApiKey?: string
 }
 
 // Alert statistics

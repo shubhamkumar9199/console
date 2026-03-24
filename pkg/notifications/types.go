@@ -6,9 +6,11 @@ import "time"
 type NotificationType string
 
 const (
-	NotificationTypeSlack   NotificationType = "slack"
-	NotificationTypeEmail   NotificationType = "email"
-	NotificationTypeWebhook NotificationType = "webhook"
+	NotificationTypeSlack     NotificationType = "slack"
+	NotificationTypeEmail     NotificationType = "email"
+	NotificationTypeWebhook   NotificationType = "webhook"
+	NotificationTypePagerDuty NotificationType = "pagerduty"
+	NotificationTypeOpsGenie  NotificationType = "opsgenie"
 )
 
 // AlertSeverity represents alert severity levels
@@ -53,7 +55,9 @@ type NotificationConfig struct {
 	EmailTo         string `json:"emailTo,omitempty"`
 	EmailUsername   string `json:"emailUsername,omitempty"`
 	EmailPassword   string `json:"emailPassword,omitempty"`
-	WebhookURL      string `json:"webhookUrl,omitempty"`
+	WebhookURL          string `json:"webhookUrl,omitempty"`
+	PagerDutyRoutingKey string `json:"pagerDutyRoutingKey,omitempty"`
+	OpsGenieAPIKey      string `json:"opsGenieApiKey,omitempty"`
 }
 
 // Notifier is the interface for sending notifications

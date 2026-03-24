@@ -1281,6 +1281,8 @@ type InstallCopySource =
   | 'demo_to_local'
   | 'from_lens'
   | 'from_headlamp'
+  | 'from_holmesgpt'
+  | 'feature_inspektorgadget'
   | 'white_label'
 
 export function emitInstallCommandCopied(source: InstallCopySource, command: string) {

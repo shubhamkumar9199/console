@@ -6,7 +6,7 @@ import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 const API_BASE = import.meta.env.VITE_API_BASE_URL || BACKEND_DEFAULT_URL
 
 interface TestNotificationRequest {
-  type: 'slack' | 'email' | 'webhook'
+  type: 'slack' | 'email' | 'webhook' | 'pagerduty' | 'opsgenie'
   config: Record<string, unknown>
 }
 
@@ -28,7 +28,7 @@ export function useNotificationAPI() {
   }, [])
 
   const testNotification = useCallback(
-    async (type: 'slack' | 'email' | 'webhook', config: Record<string, unknown>) => {
+    async (type: 'slack' | 'email' | 'webhook' | 'pagerduty' | 'opsgenie', config: Record<string, unknown>) => {
       setIsLoading(true)
       setError(null)
 

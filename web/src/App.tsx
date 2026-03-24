@@ -77,6 +77,8 @@ const Marketplace = safeLazy(() => import('./components/marketplace/Marketplace'
 const MiniDashboard = safeLazy(() => import('./components/widget/MiniDashboard'), 'MiniDashboard')
 const FromLens = safeLazy(() => import('./pages/FromLens'), 'FromLens')
 const FromHeadlamp = safeLazy(() => import('./pages/FromHeadlamp'), 'FromHeadlamp')
+const FromHolmesGPT = safeLazy(() => import('./pages/FromHolmesGPT'), 'FromHolmesGPT')
+const FeatureInspektorGadget = safeLazy(() => import('./pages/FeatureInspektorGadget'), 'FeatureInspektorGadget')
 const WhiteLabel = safeLazy(() => import('./pages/WhiteLabel'), 'WhiteLabel')
 const UnifiedCardTest = safeLazy(() => import('./pages/UnifiedCardTest'), 'UnifiedCardTest')
 const UnifiedStatsTest = safeLazy(() => import('./pages/UnifiedStatsTest'), 'UnifiedStatsTest')
@@ -304,6 +306,8 @@ const ROUTE_TITLES: Record<string, string> = {
   '/login': 'Login',
   '/from-lens': 'Switching from Lens',
   '/from-headlamp': 'Coming from Headlamp',
+  '/from-holmesgpt': 'Coming from HolmesGPT',
+  '/feature-inspektorgadget': 'Inspektor Gadget Integration',
   '/white-label': 'White-Label Your Console',
 }
 
@@ -466,6 +470,8 @@ function FullDashboardApp() {
         <Route path="/login" element={<Login />} />
         <Route path="/from-lens" element={<FromLens />} />
         <Route path="/from-headlamp" element={<FromHeadlamp />} />
+        <Route path="/from-holmesgpt" element={<FromHolmesGPT />} />
+        <Route path="/feature-inspektorgadget" element={<FeatureInspektorGadget />} />
         <Route path="/white-label" element={<WhiteLabel />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         {/* PWA Mini Dashboard - lightweight widget mode (no auth required for local monitoring) */}

@@ -14,6 +14,8 @@ import { STORAGE_KEY_AUTH_TOKEN, FETCH_DEFAULT_TIMEOUT_MS, STORAGE_KEY_NOTIFIED_
 import { INITIAL_FETCH_DELAY_MS, POLL_INTERVAL_SLOW_MS, SECONDARY_FETCH_DELAY_MS } from '../lib/constants/network'
 import { PRESET_ALERT_RULES } from '../types/alerts'
 import { sendNotificationWithDeepLink } from '../hooks/useDeepLink'
+import { findRunbookForCondition } from '../lib/runbooks/builtins'
+import { executeRunbook } from '../lib/runbooks/executor'
 
 // Lazy-load the MCP data fetcher — keeps the 300 KB MCP hook tree out of
 // the main chunk.  The provider renders immediately with empty data; once
@@ -421,14 +423,26 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   // Resolve an alert
   const resolveAlert = useCallback((alertId: string) => {
-    setAlerts(prev =>
-      prev.map(alert =>
+    setAlerts(prev => {
+      const updated = prev.map(alert =>
         alert.id === alertId
           ? { ...alert, status: 'resolved' as const, resolvedAt: new Date().toISOString() }
           : alert
       )
-    )
-  }, [])
+      // Send resolution notifications to channels (enables PD/OG auto-close)
+      const resolvedAlert = updated.find(a => a.id === alertId)
+      if (resolvedAlert) {
+        const rule = rules.find(r => r.id === resolvedAlert.ruleId)
+        if (rule) {
+          const enabledChannels = rule.channels.filter(ch => ch.enabled)
+          if (enabledChannels.length > 0) {
+            sendNotifications(resolvedAlert, enabledChannels).catch(() => {})
+          }
+        }
+      }
+      return updated
+    })
+  }, [rules])
 
   // Delete an alert
   const deleteAlert = useCallback((alertId: string) => {
@@ -552,12 +566,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       const alert = alerts.find(a => a.id === alertId)
       if (!alert) return null
 
-      const missionId = startMission({
-        title: `Diagnose: ${alert.ruleName}`,
-        description: `Analyzing alert on ${alert.cluster || 'cluster'}`,
-        type: 'troubleshoot',
-        cluster: alert.cluster,
-        initialPrompt: `Please analyze this alert and provide diagnosis with suggestions:
+      // Look up matching runbook for this alert condition type
+      const rule = rules.find(r => r.id === alert.ruleId)
+      const conditionType = rule?.condition.type
+      const runbook = conditionType ? findRunbookForCondition(conditionType) : undefined
+
+      // If a runbook matches, execute it in the background to gather evidence
+      // and build an enriched prompt. Fall back to the default prompt otherwise.
+      let initialPrompt = `Please analyze this alert and provide diagnosis with suggestions:
 
 Alert: ${alert.ruleName}
 Severity: ${alert.severity}
@@ -569,11 +585,38 @@ Details: ${JSON.stringify(alert.details, null, 2)}
 Please provide:
 1. A summary of the issue
 2. The likely root cause
-3. Suggested actions to resolve this alert`,
+3. Suggested actions to resolve this alert`
+
+      if (runbook) {
+        // Fire-and-forget: runbook evidence will enrich the AI prompt asynchronously
+        executeRunbook(runbook, {
+          cluster: alert.cluster,
+          namespace: alert.namespace,
+          resource: alert.resource,
+          resourceKind: alert.resourceKind,
+          alertMessage: alert.message,
+        }).then(result => {
+          if (result.enrichedPrompt) {
+            // The mission has already started; the enriched prompt will be
+            // available for subsequent AI interactions in the mission context.
+            console.debug(`Runbook "${runbook.title}" gathered ${result.stepResults.length} evidence steps`)
+          }
+        }).catch(() => {
+          // Silent failure - runbook is best-effort enhancement
+        })
+      }
+
+      const missionId = startMission({
+        title: `Diagnose: ${alert.ruleName}`,
+        description: `Analyzing alert on ${alert.cluster || 'cluster'}`,
+        type: 'troubleshoot',
+        cluster: alert.cluster,
+        initialPrompt,
         context: {
           alertId,
           alertType: alert.ruleName,
           details: alert.details,
+          runbookId: runbook?.id,
         },
       })
 
@@ -596,7 +639,7 @@ Please provide:
 
       return missionId
     },
-    [alerts, startMission]
+    [alerts, rules, startMission]
   )
 
   // Evaluate GPU usage condition — reads from refs for stable identity

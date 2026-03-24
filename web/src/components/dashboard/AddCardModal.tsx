@@ -135,6 +135,8 @@ const CARD_CATALOG = {
     { type: 'service_topology', title: 'Service Topology', description: 'Animated service mesh visualization with cross-cluster traffic', visualization: 'status' },
     { type: 'ingress_status', title: 'Ingress Status', description: 'Ingress resources with hosts, paths, and backend services', visualization: 'table' },
     { type: 'network_policy_status', title: 'Network Policy Status', description: 'NetworkPolicy resources with pod selectors and rules', visualization: 'table' },
+    { type: 'network_trace', title: 'Network Traces', description: 'Live network connection tracing via Inspektor Gadget eBPF', visualization: 'table' },
+    { type: 'dns_trace', title: 'DNS Traces', description: 'Live DNS query tracing via Inspektor Gadget eBPF', visualization: 'table' },
   ],
   'GitOps': [
     { type: 'helm_release_status', title: 'Helm Releases', description: 'Helm release status and versions', visualization: 'status' },
@@ -184,6 +186,8 @@ const CARD_CATALOG = {
     { type: 'user_management', title: 'User Management', description: 'Console users and Kubernetes RBAC', visualization: 'table' },
     { type: 'role_status', title: 'Roles', description: 'Kubernetes Roles across clusters and namespaces', visualization: 'table' },
     { type: 'role_binding_status', title: 'Role Bindings', description: 'RoleBindings linking subjects to roles', visualization: 'table' },
+    { type: 'process_trace', title: 'Process Traces', description: 'Live process execution tracing via Inspektor Gadget eBPF', visualization: 'table' },
+    { type: 'security_audit', title: 'Security Audit', description: 'Security audit using Inspektor Gadget eBPF-based runtime analysis', visualization: 'table' },
   ],
   'Live Trends': [
     { type: 'events_timeline', title: 'Events Timeline', description: 'Warning vs normal events over time with live data', visualization: 'timeseries' },

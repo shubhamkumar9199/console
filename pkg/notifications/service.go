@@ -26,6 +26,22 @@ func (s *Service) RegisterSlackNotifier(id, webhookURL, channel string) {
 	}
 }
 
+// RegisterPagerDutyNotifier registers a PagerDuty notifier
+func (s *Service) RegisterPagerDutyNotifier(id, routingKey string) {
+	if routingKey != "" {
+		s.notifiers[fmt.Sprintf("pagerduty:%s", id)] = NewPagerDutyNotifier(routingKey)
+		log.Printf("Registered PagerDuty notifier: %s", id)
+	}
+}
+
+// RegisterOpsGenieNotifier registers an OpsGenie notifier
+func (s *Service) RegisterOpsGenieNotifier(id, apiKey string) {
+	if apiKey != "" {
+		s.notifiers[fmt.Sprintf("opsgenie:%s", id)] = NewOpsGenieNotifier(apiKey)
+		log.Printf("Registered OpsGenie notifier: %s", id)
+	}
+}
+
 // RegisterEmailNotifier registers an email notifier
 func (s *Service) RegisterEmailNotifier(id, smtpHost string, smtpPort int, username, password, from, to string) {
 	if smtpHost != "" && from != "" && to != "" {
@@ -102,6 +118,18 @@ func (s *Service) SendAlertToChannels(alert Alert, channels []NotificationChanne
 				}
 				notifier = NewEmailNotifier(smtpHost, smtpPort, username, password, from, recipients)
 			}
+
+		case NotificationTypePagerDuty:
+			routingKey, _ := channel.Config["pagerdutyRoutingKey"].(string)
+			if routingKey != "" {
+				notifier = NewPagerDutyNotifier(routingKey)
+			}
+
+		case NotificationTypeOpsGenie:
+			apiKey, _ := channel.Config["opsgenieApiKey"].(string)
+			if apiKey != "" {
+				notifier = NewOpsGenieNotifier(apiKey)
+			}
 		}
 
 		if notifier != nil {
@@ -153,6 +181,20 @@ func (s *Service) TestNotifier(notifierType string, config map[string]interface{
 			recipients[i] = strings.TrimSpace(r)
 		}
 		notifier = NewEmailNotifier(smtpHost, smtpPort, username, password, from, recipients)
+
+	case NotificationTypePagerDuty:
+		routingKey, _ := config["pagerdutyRoutingKey"].(string)
+		if routingKey == "" {
+			return fmt.Errorf("PagerDuty routing key is required")
+		}
+		notifier = NewPagerDutyNotifier(routingKey)
+
+	case NotificationTypeOpsGenie:
+		apiKey, _ := config["opsgenieApiKey"].(string)
+		if apiKey == "" {
+			return fmt.Errorf("OpsGenie API key is required")
+		}
+		notifier = NewOpsGenieNotifier(apiKey)
 
 	default:
 		return fmt.Errorf("unsupported notifier type: %s", notifierType)

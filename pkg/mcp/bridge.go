@@ -15,6 +15,7 @@ import (
 type Bridge struct {
 	opsClient    *Client
 	deployClient *Client
+	gadgetClient *Client
 	mu           sync.RWMutex
 	config       BridgeConfig
 }
@@ -23,6 +24,7 @@ type Bridge struct {
 type BridgeConfig struct {
 	KubestellarOpsPath    string
 	KubestellarDeployPath string
+	InspektorGadgetPath   string
 	Kubeconfig       string
 }
 
@@ -109,7 +111,7 @@ func NewBridge(config BridgeConfig) *Bridge {
 // rather than treated as a fatal error.
 func (b *Bridge) Start(ctx context.Context) error {
 	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 3)
 
 	// Start kubestellar-ops if path is configured and binary exists
 	if b.config.KubestellarOpsPath != "" {
@@ -136,6 +138,21 @@ func (b *Bridge) Start(ctx context.Context) error {
 				defer wg.Done()
 				if err := b.startDeployClient(ctx); err != nil {
 					errCh <- fmt.Errorf("deploy client: %w", err)
+				}
+			}()
+		}
+	}
+
+	// Start inspektor-gadget if path is configured and binary exists
+	if b.config.InspektorGadgetPath != "" {
+		if _, err := exec.LookPath(b.config.InspektorGadgetPath); err != nil {
+			log.Printf("inspektor-gadget MCP binary not found on PATH (%q) — Gadget tools will be unavailable.", b.config.InspektorGadgetPath)
+		} else {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := b.startGadgetClient(ctx); err != nil {
+					errCh <- fmt.Errorf("gadget client: %w", err)
 				}
 			}()
 		}
@@ -176,6 +193,12 @@ func (b *Bridge) Stop() error {
 		}
 	}
 
+	if b.gadgetClient != nil {
+		if err := b.gadgetClient.Stop(); err != nil {
+			errs = append(errs, fmt.Errorf("gadget client: %w", err))
+		}
+	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("errors stopping clients: %v", errs)
 	}
@@ -200,6 +223,28 @@ func (b *Bridge) startOpsClient(ctx context.Context) error {
 
 	b.mu.Lock()
 	b.opsClient = client
+	b.mu.Unlock()
+
+	return nil
+}
+
+func (b *Bridge) startGadgetClient(ctx context.Context) error {
+	args := []string{"--mcp-server"}
+	if b.config.Kubeconfig != "" {
+		args = append(args, "--kubeconfig", b.config.Kubeconfig)
+	}
+
+	client, err := NewClient("inspektor-gadget", b.config.InspektorGadgetPath, args...)
+	if err != nil {
+		return err
+	}
+
+	if err := client.Start(ctx); err != nil {
+		return err
+	}
+
+	b.mu.Lock()
+	b.gadgetClient = client
 	b.mu.Unlock()
 
 	return nil
@@ -411,6 +456,29 @@ func (b *Bridge) CallOpsTool(ctx context.Context, name string, args map[string]i
 	return b.opsClient.CallTool(ctx, name, args)
 }
 
+// GetGadgetTools returns the list of available gadget tools
+func (b *Bridge) GetGadgetTools() []Tool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if b.gadgetClient == nil {
+		return nil
+	}
+	return b.gadgetClient.Tools()
+}
+
+// CallGadgetTool calls any gadget tool by name
+func (b *Bridge) CallGadgetTool(ctx context.Context, name string, args map[string]interface{}) (*CallToolResult, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if b.gadgetClient == nil {
+		return nil, fmt.Errorf("gadget client not available")
+	}
+
+	return b.gadgetClient.CallTool(ctx, name, args)
+}
+
 // CallDeployTool calls any deploy tool by name
 func (b *Bridge) CallDeployTool(ctx context.Context, name string, args map[string]interface{}) (*CallToolResult, error) {
 	b.mu.RLock()
@@ -522,6 +590,7 @@ func (b *Bridge) Status() map[string]interface{} {
 
 	opsAvailable := b.opsClient != nil && b.opsClient.IsReady()
 	deployAvailable := b.deployClient != nil && b.deployClient.IsReady()
+	gadgetAvailable := b.gadgetClient != nil && b.gadgetClient.IsReady()
 
 	opsStatus := map[string]interface{}{
 		"available": opsAvailable,
@@ -529,6 +598,10 @@ func (b *Bridge) Status() map[string]interface{} {
 	}
 	deployStatus := map[string]interface{}{
 		"available": deployAvailable,
+		"toolCount": 0,
+	}
+	gadgetStatus := map[string]interface{}{
+		"available": gadgetAvailable,
 		"toolCount": 0,
 	}
 
@@ -545,10 +618,16 @@ func (b *Bridge) Status() map[string]interface{} {
 			deployStatus["install"] = "brew install kubestellar/tap/kubestellar-deploy"
 		}
 	}
+	if !gadgetAvailable {
+		if _, err := exec.LookPath(b.config.InspektorGadgetPath); err != nil {
+			gadgetStatus["reason"] = "binary not found on PATH"
+		}
+	}
 
 	status := map[string]interface{}{
 		"opsClient":    opsStatus,
 		"deployClient": deployStatus,
+		"gadgetClient": gadgetStatus,
 	}
 
 	if opsAvailable {
@@ -556,6 +635,9 @@ func (b *Bridge) Status() map[string]interface{} {
 	}
 	if deployAvailable {
 		deployStatus["toolCount"] = len(b.deployClient.Tools())
+	}
+	if gadgetAvailable {
+		gadgetStatus["toolCount"] = len(b.gadgetClient.Tools())
 	}
 
 	return status
@@ -566,6 +648,7 @@ func DefaultBridgeConfig() BridgeConfig {
 	return BridgeConfig{
 		KubestellarOpsPath:    getEnvOrDefault("KUBESTELLAR_OPS_PATH", "kubestellar-ops"),
 		KubestellarDeployPath: getEnvOrDefault("KUBESTELLAR_DEPLOY_PATH", "kubestellar-deploy"),
+		InspektorGadgetPath:   getEnvOrDefault("INSPEKTOR_GADGET_MCP_PATH", "ig-mcp-server"),
 		Kubeconfig:       os.Getenv("KUBECONFIG"),
 	}
 }

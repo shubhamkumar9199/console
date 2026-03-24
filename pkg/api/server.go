@@ -876,6 +876,12 @@ func (s *Server) setupRoutes() {
 	api.Get("/notifications/config", notificationHandler.GetNotificationConfig)
 	api.Post("/notifications/config", notificationHandler.SaveNotificationConfig)
 
+	// Inspektor Gadget routes
+	gadgetHandler := handlers.NewGadgetHandler(s.bridge)
+	api.Get("/gadget/status", gadgetHandler.GetStatus)
+	api.Get("/gadget/tools", gadgetHandler.GetTools)
+	api.Post("/gadget/trace", gadgetHandler.RunTrace)
+
 	// Console persistence routes (CRD-based state management)
 	persistenceHandler := handlers.NewConsolePersistenceHandlers(s.persistenceStore, s.k8sClient, s.hub)
 	api.Get("/persistence/config", persistenceHandler.GetConfig)

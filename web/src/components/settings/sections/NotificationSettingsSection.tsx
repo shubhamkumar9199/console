@@ -6,6 +6,8 @@ import { NotificationConfig } from '../../../types/alerts'
 import { BrowserNotificationSettings } from './BrowserNotificationSettings'
 import { SlackNotificationSettings } from './SlackNotificationSettings'
 import { EmailNotificationSettings } from './EmailNotificationSettings'
+import { PagerDutyNotificationSettings } from './PagerDutyNotificationSettings'
+import { OpsGenieNotificationSettings } from './OpsGenieNotificationSettings'
 
 const STORAGE_KEY = 'kc_notification_config'
 
@@ -82,6 +84,26 @@ export function NotificationSettingsSection() {
 
       {/* Email Configuration */}
       <EmailNotificationSettings
+        config={config}
+        updateConfig={updateConfig}
+        testResult={testResult}
+        setTestResult={setTestResult}
+        testNotification={testNotification}
+        isLoading={isLoading}
+      />
+
+      {/* PagerDuty Configuration */}
+      <PagerDutyNotificationSettings
+        config={config}
+        updateConfig={updateConfig}
+        testResult={testResult}
+        setTestResult={setTestResult}
+        testNotification={testNotification}
+        isLoading={isLoading}
+      />
+
+      {/* OpsGenie Configuration */}
+      <OpsGenieNotificationSettings
         config={config}
         updateConfig={updateConfig}
         testResult={testResult}

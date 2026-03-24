@@ -232,6 +232,12 @@ const ThanosStatus = safeLazy(() => import('./thanos_status'), 'ThanosStatus')
 // OpenFeature feature-flag management card
 const OpenFeatureStatus = safeLazy(() => import('./openfeature_status'), 'OpenFeatureStatus')
 
+// Inspektor Gadget cards
+const NetworkTraceCard = safeLazy(() => import('./gadget/NetworkTraceCard'), 'NetworkTraceCard')
+const DNSTraceCard = safeLazy(() => import('./gadget/DNSTraceCard'), 'DNSTraceCard')
+const ProcessTraceCard = safeLazy(() => import('./gadget/ProcessTraceCard'), 'ProcessTraceCard')
+const SecurityAuditCard = safeLazy(() => import('./gadget/SecurityAuditCard'), 'SecurityAuditCard')
+
 // Multi-tenancy cards — share one chunk via barrel import
 const _multiTenancyBundle = import('./multi-tenancy').catch(() => undefined as never)
 const OvnStatus = safeLazy(() => _multiTenancyBundle, 'OvnStatus')
@@ -519,6 +525,12 @@ const RAW_CARD_COMPONENTS: Record<string, CardComponent> = {
   thanos_status: ThanosStatus,
   // OpenFeature feature-flag management
   openfeature_status: OpenFeatureStatus,
+
+  // Inspektor Gadget cards
+  network_trace: NetworkTraceCard,
+  dns_trace: DNSTraceCard,
+  process_trace: ProcessTraceCard,
+  security_audit: SecurityAuditCard,
 
   // LLM-d stunning visualization cards
   llmd_flow: LLMdFlow,
@@ -937,6 +949,11 @@ const CARD_CHUNK_PRELOADERS: Record<string, () => Promise<unknown>> = {
   kube_doom: () => import('./arcade-bundle'),
   kube_craft: () => import('./arcade-bundle'),
   kube_chess: () => import('./arcade-bundle'),
+  // Inspektor Gadget cards
+  network_trace: () => import('./gadget/NetworkTraceCard'),
+  dns_trace: () => import('./gadget/DNSTraceCard'),
+  process_trace: () => import('./gadget/ProcessTraceCard'),
+  security_audit: () => import('./gadget/SecurityAuditCard'),
   // Dynamic card
   dynamic_card: () => import('./DynamicCard'),
 }

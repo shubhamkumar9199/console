@@ -275,6 +275,12 @@ export const CARD_TITLES: Record<string, string> = {
   // Karmada multi-cluster orchestration
   karmada_status: 'Karmada',
 
+  // Inspektor Gadget
+  network_trace: 'Network Traces',
+  dns_trace: 'DNS Traces',
+  process_trace: 'Process Traces',
+  security_audit: 'Security Audit',
+
   // Multi-tenancy
   ovn_status: 'OVN-Kubernetes',
   kubeflex_status: 'KubeFlex',
@@ -520,6 +526,12 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   keda_status: 'KEDA autoscaler status, scaled object metrics, and trigger queue depths.',
   // Karmada multi-cluster orchestration
   karmada_status: 'Karmada multi-cluster resource propagation status, member clusters, and policy health.',
+
+  // Inspektor Gadget
+  network_trace: 'Live network connection tracing via Inspektor Gadget eBPF.',
+  dns_trace: 'Live DNS query tracing via Inspektor Gadget eBPF.',
+  process_trace: 'Live process execution tracing via Inspektor Gadget eBPF.',
+  security_audit: 'Security audit using Inspektor Gadget eBPF-based runtime analysis.',
 
   // Multi-tenancy
   ovn_status: 'OVN-Kubernetes network status, User Defined Networks, and tenant isolation.',
