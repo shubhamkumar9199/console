@@ -1,0 +1,226 @@
+name: Copilot Assignment Retry
+
+# Retries Copilot assignments that failed with the generic "ruleset violation" error.
+# Copilot intermittently fails to start (~20-30% of assignments) and gives a misleading
+# error. This workflow detects those failures and retries by unassigning/reassigning.
+#
+# Requires CONSOLE_AUTO secret (PAT with repo scope) — GITHUB_TOKEN cannot assign Copilot.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # Every 15 minutes
+  workflow_dispatch:
+
+env:
+  # Maximum concurrent Copilot sessions before we skip retrying
+  MAX_CONCURRENT_SESSIONS: 2
+  # Maximum retry attempts per issue
+  MAX_RETRIES: 3
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  retry-failed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Retry failed Copilot assignments
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CONSOLE_AUTO }}
+          script: |
+            const maxConcurrent = parseInt(process.env.MAX_CONCURRENT_SESSIONS);
+            const maxRetries = parseInt(process.env.MAX_RETRIES);
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+            // ── Step 1: Check active Copilot sessions ──
+            const { data: recentPRs } = await github.rest.pulls.list({
+              ...repo,
+              state: 'open',
+              sort: 'created',
+              direction: 'desc',
+              per_page: 20,
+            });
+
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const activeSessions = recentPRs.filter(pr =>
+              pr.user.login === 'copilot-swe-agent[bot]' &&
+              new Date(pr.created_at) > oneHourAgo
+            ).length;
+
+            core.info(`Active Copilot sessions (PRs created in last hour): ${activeSessions}`);
+            if (activeSessions >= maxConcurrent) {
+              core.info(`Skipping retries — ${activeSessions} active sessions (max: ${maxConcurrent})`);
+              return;
+            }
+
+            // ── Step 2: Find issues where Copilot failed to start ──
+            const { data: processingIssues } = await github.rest.issues.listForRepo({
+              ...repo,
+              labels: 'ai-processing',
+              state: 'open',
+              per_page: 20,
+              sort: 'updated',
+              direction: 'asc',
+            });
+
+            const { data: awaitingIssues } = await github.rest.issues.listForRepo({
+              ...repo,
+              labels: 'ai-awaiting-fix',
+              state: 'open',
+              per_page: 20,
+              sort: 'updated',
+              direction: 'asc',
+            });
+
+            const candidates = [...processingIssues, ...awaitingIssues];
+            // Deduplicate by issue number
+            const seen = new Set();
+            const unique = candidates.filter(i => {
+              if (seen.has(i.number)) return false;
+              seen.add(i.number);
+              return true;
+            });
+
+            core.info(`Found ${unique.length} candidate issue(s) to check`);
+            let retried = 0;
+
+            for (const issue of unique) {
+              // Skip very recent issues (avoid racing with initial assignment)
+              if (new Date(issue.created_at) > new Date(fiveMinAgo)) {
+                core.info(`#${issue.number}: too recent, skipping`);
+                continue;
+              }
+
+              // Check retry count from labels
+              const labels = issue.labels.map(l => l.name);
+              const retryLabels = labels.filter(l => l.startsWith('ai-retry-'));
+              const retryCount = retryLabels.length;
+
+              if (retryCount >= maxRetries) {
+                // Max retries reached — ensure ai-needs-human is set
+                if (!labels.includes('ai-needs-human')) {
+                  await github.rest.issues.addLabels({
+                    ...repo,
+                    issue_number: issue.number,
+                    labels: ['ai-needs-human'],
+                  });
+                  core.warning(`#${issue.number}: max retries (${maxRetries}) reached, marked as needs-human`);
+                }
+                continue;
+              }
+
+              // Check if Copilot posted the "encountered an error" message
+              const { data: comments } = await github.rest.issues.listComments({
+                ...repo,
+                issue_number: issue.number,
+                per_page: 5,
+              });
+
+              const failedToStart = comments.some(c =>
+                c.user.login === 'Copilot' &&
+                c.body.includes('encountered an error and was unable to start')
+              );
+
+              if (!failedToStart) {
+                // Also check: has Copilot been assigned but never commented at all?
+                const copilotAssigned = (issue.assignees || []).some(a => a.login === 'Copilot');
+                const copilotCommented = comments.some(c => c.user.login === 'Copilot');
+                const issueAge = Date.now() - new Date(issue.created_at).getTime();
+                const stalledNoComment = copilotAssigned && !copilotCommented && issueAge > 30 * 60 * 1000;
+
+                if (!stalledNoComment) continue;
+                core.info(`#${issue.number}: Copilot assigned ${Math.round(issueAge / 60000)}m ago with no response`);
+              }
+
+              // Check: does this issue already have a PR?
+              const { data: timeline } = await github.rest.issues.listEventsForTimeline({
+                ...repo,
+                issue_number: issue.number,
+                per_page: 50,
+              });
+              const hasPR = timeline.some(e =>
+                e.event === 'cross-referenced' &&
+                e.source?.issue?.pull_request
+              );
+              if (hasPR) {
+                core.info(`#${issue.number}: already has a linked PR, skipping`);
+                continue;
+              }
+
+              // Respect concurrent session limit
+              if (activeSessions + retried >= maxConcurrent) {
+                core.info(`Concurrent session limit reached, stopping retries`);
+                break;
+              }
+
+              // ── Step 3: Retry assignment ──
+              core.info(`#${issue.number}: retrying Copilot assignment (attempt ${retryCount + 1}/${maxRetries})`);
+
+              // Unassign Copilot
+              try {
+                await github.rest.issues.removeAssignees({
+                  ...repo,
+                  issue_number: issue.number,
+                  assignees: ['Copilot'],
+                });
+              } catch (e) {
+                core.warning(`#${issue.number}: could not unassign Copilot: ${e.message}`);
+              }
+
+              // Brief pause before reassigning
+              await new Promise(resolve => setTimeout(resolve, 10000));
+
+              // Reassign Copilot
+              try {
+                await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/assignees', {
+                  ...repo,
+                  issue_number: issue.number,
+                  assignees: ['copilot-swe-agent[bot]'],
+                  agent_assignment: {
+                    target_repo: `${repo.owner}/${repo.repo}`,
+                    base_branch: 'main',
+                  },
+                });
+
+                // Track retry count
+                await github.rest.issues.addLabels({
+                  ...repo,
+                  issue_number: issue.number,
+                  labels: [`ai-retry-${retryCount + 1}`],
+                });
+
+                // Remove stalled label if present
+                if (labels.includes('ai-stalled')) {
+                  try {
+                    await github.rest.issues.removeLabel({
+                      ...repo,
+                      issue_number: issue.number,
+                      name: 'ai-stalled',
+                    });
+                  } catch (e) { /* label might not exist */ }
+                }
+
+                core.info(`#${issue.number}: Copilot reassigned (attempt ${retryCount + 1})`);
+                retried++;
+              } catch (e) {
+                core.error(`#${issue.number}: reassignment failed: ${e.message}`);
+                await github.rest.issues.createComment({
+                  ...repo,
+                  issue_number: issue.number,
+                  body: `⚠️ Copilot retry ${retryCount + 1}/${maxRetries} failed: ${e.message}`,
+                });
+              }
+
+              // Delay between retries to avoid concurrent session conflicts
+              if (retried > 0) {
+                core.info('Waiting 120s before next retry...');
+                await new Promise(resolve => setTimeout(resolve, 120000));
+              }
+            }
+
+            core.info(`Copilot retry complete: ${retried} issue(s) retried`);

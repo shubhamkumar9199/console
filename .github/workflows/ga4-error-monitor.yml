@@ -32,6 +32,8 @@ env:
   MAX_ISSUES_PER_RUN: 3
   # Hours to look back for errors
   LOOKBACK_HOURS: 2
+  # Seconds between Copilot assignments to avoid rate limiting
+  COPILOT_ASSIGNMENT_DELAY_S: 120
 
 permissions:
   contents: read
@@ -327,7 +329,9 @@ jobs:
                 '*Labels `ai-fix-requested` and `triage/accepted` enable Copilot to fix this automatically.*',
               ].join('\n');
 
-              const labels = ['bug', 'ai-fix-requested', 'help wanted', 'ga4-error', 'auto-qa', 'triage/accepted'];
+              // Note: ai-fix-requested is omitted because we assign Copilot directly below.
+              // Including it would trigger ai-fix.yml which tries to assign again with GITHUB_TOKEN (Forbidden).
+              const labels = ['bug', 'help wanted', 'ga4-error', 'auto-qa', 'triage/accepted'];
 
               const { data: issue } = await github.rest.issues.create({
                 owner: context.repo.owner,
@@ -357,6 +361,13 @@ jobs:
               }
 
               created++;
+
+              // Throttle between Copilot assignments to avoid concurrent session failures.
+              const delaySeconds = parseInt(process.env.COPILOT_ASSIGNMENT_DELAY_S || '120');
+              if (created < maxIssues && delaySeconds > 0) {
+                core.info(`Waiting ${delaySeconds}s before next Copilot assignment...`);
+                await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+              }
             }
 
             core.info(`GA4 Error Monitor complete: ${created} issue(s) created from ${spikes.length} spike(s).`);
