@@ -545,8 +545,8 @@ export function Sidebar() {
       {/* Collapse + Pin controls — top-right of sidebar, above resize handle */}
       {!isMobile && !isMissionFullScreen && (
         <div
-          className="fixed top-[4.5rem] z-[45] flex flex-col gap-1.5 items-center"
-          style={{ left: sidebarWidth - 14 }}
+          className="fixed top-[4.5rem] z-[45] flex flex-col gap-1.5 items-center transition-[left] duration-300"
+          style={{ left: sidebarWidth + 4 }}
         >
           <button
             data-testid="sidebar-collapse-toggle"
