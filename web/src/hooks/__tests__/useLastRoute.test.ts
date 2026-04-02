@@ -782,15 +782,15 @@ describe('useLastRoute hook — localStorage error handling', () => {
     mockPathname = '/pods'
     mockSearch = ''
     const origGetItem = localStorage.getItem
-    const { useLastRoute } = await importFresh()
+    const { useLastRoute, getLastRoute } = await importFresh()
 
     renderHook(() => useLastRoute())
 
-    // Now break getItem
+    // Now break getItem — this affects both lastRoute and scrollPositions
     localStorage.getItem = () => { throw new Error('SecurityError') }
 
-    const { result } = renderHook(() => useLastRoute())
-    expect(result.current.scrollPositions).toEqual({})
+    // getLastRoute has its own try/catch and should return null
+    expect(getLastRoute()).toBeNull()
 
     localStorage.getItem = origGetItem
   })
