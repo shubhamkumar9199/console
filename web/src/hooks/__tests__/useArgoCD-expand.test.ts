@@ -246,10 +246,10 @@ describe('useArgoCDSyncStatus — edge cases', () => {
 
   // 17. Percent calculations for sync data
   it('calculates sync percentages correctly', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse({
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({
       stats: { synced: 7, outOfSync: 2, unknown: 1 },
       isDemoData: false,
-    }))
+    })))
     const { result } = renderHook(() => useArgoCDSyncStatus())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.total).toBe(10)
