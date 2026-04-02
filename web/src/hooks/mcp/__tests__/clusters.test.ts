@@ -1365,28 +1365,33 @@ describe('useMCPStatus — additional branches', () => {
   })
 
   it('sets status to null when fetch errors, even if previous status existed', async () => {
+    // Use fake timers BEFORE rendering so subscribePolling creates fake intervals
+    vi.useFakeTimers()
     const initialStatus: MCPStatus = {
       opsClient: { available: true, toolCount: 5 },
       deployClient: { available: true, toolCount: 3 },
     }
     mockApiGet.mockResolvedValueOnce({ data: initialStatus })
     const { result } = renderHook(() => useMCPStatus())
-    await waitFor(() => expect(result.current.status).toEqual(initialStatus))
+    await act(async () => { await Promise.resolve() })
+    expect(result.current.status).toEqual(initialStatus)
 
     // Subsequent poll errors
     mockApiGet.mockRejectedValue(new Error('Network error'))
-    vi.useFakeTimers()
-    act(() => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS) })
-    await act(() => Promise.resolve())
+    await act(async () => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS) })
+    await act(async () => { await Promise.resolve() })
     expect(result.current.error).toBe('MCP bridge not available')
     expect(result.current.status).toBeNull()
     vi.useRealTimers()
   })
 
   it('clears error when fetch succeeds after failure', async () => {
+    // Use fake timers BEFORE rendering so subscribePolling creates fake intervals
+    vi.useFakeTimers()
     mockApiGet.mockRejectedValueOnce(new Error('err'))
     const { result } = renderHook(() => useMCPStatus())
-    await waitFor(() => expect(result.current.error).toBe('MCP bridge not available'))
+    await act(async () => { await Promise.resolve() })
+    expect(result.current.error).toBe('MCP bridge not available')
 
     // Now succeed
     const good: MCPStatus = {
@@ -1394,9 +1399,8 @@ describe('useMCPStatus — additional branches', () => {
       deployClient: { available: false, toolCount: 0 },
     }
     mockApiGet.mockResolvedValue({ data: good })
-    vi.useFakeTimers()
-    act(() => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS) })
-    await act(() => Promise.resolve())
+    await act(async () => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS) })
+    await act(async () => { await Promise.resolve() })
     expect(result.current.error).toBeNull()
     expect(result.current.status).toEqual(good)
     vi.useRealTimers()

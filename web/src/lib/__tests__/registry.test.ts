@@ -161,12 +161,17 @@ describe('registry', () => {
 })
 
 describe('registerCards', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('calls registerCard for each definition', () => {
     const defs = [{ type: 'a' }, { type: 'b' }] as never[]
     registerCards(defs)
     expect(registerCard).toHaveBeenCalledTimes(2)
-    expect(registerCard).toHaveBeenCalledWith(defs[0])
-    expect(registerCard).toHaveBeenCalledWith(defs[1])
+    // forEach passes (element, index, array) so check the first argument of each call
+    expect(vi.mocked(registerCard).mock.calls[0][0]).toBe(defs[0])
+    expect(vi.mocked(registerCard).mock.calls[1][0]).toBe(defs[1])
   })
 
   it('handles empty array', () => {

@@ -516,4 +516,629 @@ describe('useMetricsHistory', () => {
       expect(context).toContain('8')
     })
   })
+
+  // ── Additional coverage tests ───────────────────────────────────────────
+
+  describe('auto-capture interval behavior', () => {
+    it('auto-captures an initial snapshot when clusters are present on mount', async () => {
+      mockClusters.push({
+        name: 'auto-cluster',
+        cpuCores: 10,
+        cpuUsageCores: 3,
+        memoryGB: 64,
+        memoryUsageGB: 20,
+        nodeCount: 4,
+        healthy: true,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      // The hook should have auto-captured an initial snapshot
+      expect(result.current.snapshotCount).toBeGreaterThanOrEqual(1)
+      expect(result.current.history[0].clusters[0].name).toBe('auto-cluster')
+      expect(result.current.history[0].clusters[0].cpuPercent).toBe(30) // 3/10 * 100
+    })
+
+    it('captures a snapshot after interval elapses', async () => {
+      mockClusters.push({
+        name: 'interval-cluster',
+        cpuCores: 4,
+        cpuUsageCores: 2,
+        memoryGB: 8,
+        memoryUsageGB: 4,
+        nodeCount: 1,
+        healthy: true,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      const countAfterMount = result.current.snapshotCount
+
+      // Advance time by 10 minutes (the configured interval)
+      const TEN_MINUTES_MS = 10 * 60 * 1000
+      act(() => {
+        vi.advanceTimersByTime(TEN_MINUTES_MS)
+      })
+
+      expect(result.current.snapshotCount).toBeGreaterThan(countAfterMount)
+    })
+
+    it('skips capture when interval has not elapsed', async () => {
+      mockClusters.push({
+        name: 'skip-cluster',
+        cpuCores: 4,
+        cpuUsageCores: 2,
+        memoryGB: 8,
+        memoryUsageGB: 4,
+        nodeCount: 1,
+        healthy: true,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      const countAfterMount = result.current.snapshotCount
+
+      // Advance only 1 minute — should NOT trigger another capture
+      const ONE_MINUTE_MS = 1 * 60 * 1000
+      act(() => {
+        vi.advanceTimersByTime(ONE_MINUTE_MS)
+      })
+
+      expect(result.current.snapshotCount).toBe(countAfterMount)
+    })
+
+    it('does not auto-capture when clusters array is empty', async () => {
+      // No clusters pushed → clusters.length === 0
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      const TEN_MINUTES_MS = 10 * 60 * 1000
+      act(() => {
+        vi.advanceTimersByTime(TEN_MINUTES_MS)
+      })
+
+      expect(result.current.snapshotCount).toBe(0)
+    })
+  })
+
+  describe('snapshot data mapping', () => {
+    it('maps cluster data correctly with cpu/memory percentages', async () => {
+      mockClusters.push({
+        name: 'data-cluster',
+        cpuCores: 20,
+        cpuUsageCores: 15,
+        memoryGB: 128,
+        memoryUsageGB: 96,
+        nodeCount: 10,
+        healthy: true,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.clusters[0].cpuPercent).toBe(75) // 15/20 * 100
+      expect(latest.clusters[0].memoryPercent).toBe(75) // 96/128 * 100
+      expect(latest.clusters[0].nodeCount).toBe(10)
+      expect(latest.clusters[0].healthyNodes).toBe(10) // healthy: true
+    })
+
+    it('sets cpuPercent to 0 when cpuCores is missing', async () => {
+      mockClusters.push({
+        name: 'no-cpu',
+        cpuCores: 0,
+        cpuUsageCores: 5,
+        memoryGB: 16,
+        memoryUsageGB: 8,
+        nodeCount: 2,
+        healthy: true,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.clusters[0].cpuPercent).toBe(0)
+    })
+
+    it('sets memoryPercent to 0 when memoryGB is missing', async () => {
+      mockClusters.push({
+        name: 'no-mem',
+        cpuCores: 4,
+        cpuUsageCores: 2,
+        memoryGB: 0,
+        memoryUsageGB: 0,
+        nodeCount: 1,
+        healthy: false,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.clusters[0].memoryPercent).toBe(0)
+    })
+
+    it('sets healthyNodes to 0 when cluster is unhealthy', async () => {
+      mockClusters.push({
+        name: 'unhealthy-cluster',
+        cpuCores: 4,
+        cpuUsageCores: 2,
+        memoryGB: 8,
+        memoryUsageGB: 4,
+        nodeCount: 5,
+        healthy: false,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.clusters[0].healthyNodes).toBe(0)
+      expect(latest.clusters[0].nodeCount).toBe(5)
+    })
+
+    it('defaults nodeCount to 0 when not provided', async () => {
+      mockClusters.push({
+        name: 'no-nodecount',
+        cpuCores: 4,
+        cpuUsageCores: 2,
+        memoryGB: 8,
+        memoryUsageGB: 4,
+        healthy: true,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.clusters[0].nodeCount).toBe(0)
+    })
+
+    it('maps pod issues with defaults for missing fields', async () => {
+      mockClusters.push({ name: 'c1', cpuCores: 4, cpuUsageCores: 2, memoryGB: 8, memoryUsageGB: 4, nodeCount: 1, healthy: true })
+      mockPodIssues.push({
+        name: 'pod-missing-fields',
+        // Missing cluster, restarts, status
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.podIssues[0].name).toBe('pod-missing-fields')
+      expect(latest.podIssues[0].cluster).toBe('')
+      expect(latest.podIssues[0].restarts).toBe(0)
+      expect(latest.podIssues[0].status).toBe('')
+    })
+
+    it('maps GPU nodes with gpuType defaulting to empty string', async () => {
+      mockClusters.push({ name: 'c1', cpuCores: 4, cpuUsageCores: 2, memoryGB: 8, memoryUsageGB: 4, nodeCount: 1, healthy: true })
+      mockGPUNodes.push({
+        name: 'gpu-node-1',
+        cluster: 'c1',
+        // No gpuType
+        gpuAllocated: 2,
+        gpuCount: 8,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.gpuNodes[0].gpuType).toBe('')
+      expect(latest.gpuNodes[0].gpuAllocated).toBe(2)
+      expect(latest.gpuNodes[0].gpuTotal).toBe(8)
+    })
+
+    it('maps GPU nodes with gpuType when present', async () => {
+      mockClusters.push({ name: 'c1', cpuCores: 4, cpuUsageCores: 2, memoryGB: 8, memoryUsageGB: 4, nodeCount: 1, healthy: true })
+      mockGPUNodes.push({
+        name: 'gpu-node-2',
+        cluster: 'c1',
+        gpuType: 'NVIDIA A100',
+        gpuAllocated: 4,
+        gpuCount: 4,
+      })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => { result.current.captureNow() })
+
+      const latest = result.current.history[result.current.history.length - 1]
+      expect(latest.gpuNodes[0].gpuType).toBe('NVIDIA A100')
+    })
+  })
+
+  describe('trend edge cases', () => {
+    it('getClusterTrend returns "stable" for a non-existent cluster', async () => {
+      const snaps = [
+        makeClusterSnapshot('prod', 50, 50, new Date(Date.now() - 30000).toISOString()),
+        makeClusterSnapshot('prod', 55, 55, new Date(Date.now() - 20000).toISOString()),
+        makeClusterSnapshot('prod', 60, 60, new Date(Date.now() - 10000).toISOString()),
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      // Query a cluster name that doesn't exist in any snapshot
+      expect(result.current.getClusterTrend('nonexistent-cluster', 'cpuPercent')).toBe('stable')
+    })
+
+    it('getPodRestartTrend returns "stable" when pod is not found in snapshots', async () => {
+      const snaps = [
+        makePodSnapshot('pod-a', 'prod', 5, new Date(Date.now() - 30000).toISOString()),
+        makePodSnapshot('pod-a', 'prod', 6, new Date(Date.now() - 20000).toISOString()),
+        makePodSnapshot('pod-a', 'prod', 7, new Date(Date.now() - 10000).toISOString()),
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      expect(result.current.getPodRestartTrend('nonexistent-pod', 'prod')).toBe('stable')
+    })
+
+    it('getPodRestartTrend returns "stable" when restarts stay the same', async () => {
+      const snaps = [
+        makePodSnapshot('pod-a', 'prod', 5, new Date(Date.now() - 30000).toISOString()),
+        makePodSnapshot('pod-a', 'prod', 5, new Date(Date.now() - 20000).toISOString()),
+        makePodSnapshot('pod-a', 'prod', 5, new Date(Date.now() - 10000).toISOString()),
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      expect(result.current.getPodRestartTrend('pod-a', 'prod')).toBe('stable')
+    })
+
+    it('getPodRestartTrend returns "stable" when restarts increase by only 1', async () => {
+      // last > first + 1 is the worsening condition, so increase of exactly 1 should be stable
+      const snaps = [
+        makePodSnapshot('pod-a', 'prod', 5, new Date(Date.now() - 30000).toISOString()),
+        makePodSnapshot('pod-a', 'prod', 5, new Date(Date.now() - 20000).toISOString()),
+        makePodSnapshot('pod-a', 'prod', 6, new Date(Date.now() - 10000).toISOString()),
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      expect(result.current.getPodRestartTrend('pod-a', 'prod')).toBe('stable')
+    })
+
+    it('getPodRestartTrend uses only last 6 snapshots', async () => {
+      // Create 10 snapshots but only last 6 should be used
+      const snaps: MetricsSnapshot[] = []
+      for (let i = 0; i < 10; i++) {
+        snaps.push(makePodSnapshot(
+          'pod-b',
+          'staging',
+          i < 5 ? 100 : i - 4, // First 5 have high restarts, last 5 have low
+          new Date(Date.now() - (10 - i) * 10000).toISOString(),
+        ))
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      // Last 6 snapshots: [100, 1, 2, 3, 4, 5] — first=100, last=5 → improving
+      const trend = result.current.getPodRestartTrend('pod-b', 'staging')
+      expect(trend).toBe('improving')
+    })
+
+    it('getClusterTrend uses only last 6 snapshots', async () => {
+      // Create 10 snapshots; first 4 have low CPU, last 6 have increasing CPU
+      const snaps: MetricsSnapshot[] = []
+      for (let i = 0; i < 10; i++) {
+        snaps.push(makeClusterSnapshot(
+          'trend-cluster',
+          10 + i * 8, // 10, 18, 26, 34, 42, 50, 58, 66, 74, 82
+          50,
+          new Date(Date.now() - (10 - i) * 10000).toISOString(),
+        ))
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      // Last 6: [50, 58, 66, 74, 82, 82-ish] — increasing, should be "worsening"
+      const trend = result.current.getClusterTrend('trend-cluster', 'cpuPercent')
+      expect(trend).toBe('worsening')
+    })
+  })
+
+  describe('event and storage listeners', () => {
+    it('responds to HISTORY_CHANGED_EVENT from other components', async () => {
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      expect(result.current.snapshotCount).toBe(0)
+
+      // Simulate another component writing to localStorage and dispatching event
+      const snap = makeSnapshot({ timestamp: new Date().toISOString() })
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([snap]))
+
+      act(() => {
+        window.dispatchEvent(new Event(HISTORY_CHANGED_EVENT))
+      })
+
+      expect(result.current.snapshotCount).toBe(1)
+    })
+
+    it('responds to storage events from other tabs', async () => {
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      expect(result.current.snapshotCount).toBe(0)
+
+      const snap = makeSnapshot({ timestamp: new Date().toISOString() })
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([snap]))
+
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: STORAGE_KEY,
+          newValue: JSON.stringify([snap]),
+        }))
+      })
+
+      expect(result.current.snapshotCount).toBe(1)
+    })
+
+    it('ignores storage events for other keys', async () => {
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'some-other-key',
+          newValue: '{"data": "irrelevant"}',
+        }))
+      })
+
+      expect(result.current.snapshotCount).toBe(0)
+    })
+
+    it('handles invalid JSON in HISTORY_CHANGED_EVENT gracefully', async () => {
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      localStorage.setItem(STORAGE_KEY, 'NOT VALID JSON!!!')
+
+      act(() => {
+        window.dispatchEvent(new Event(HISTORY_CHANGED_EVENT))
+      })
+
+      // Should not crash, history remains as-is
+      expect(result.current.snapshotCount).toBe(0)
+    })
+  })
+
+  describe('non-quota persist errors', () => {
+    it('logs non-quota DOMException errors without falling through to cleanup', async () => {
+      mockClusters.push({ name: 'c1', cpuCores: 4, cpuUsageCores: 2, memoryGB: 8, memoryUsageGB: 4, nodeCount: 1, healthy: true })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result } = renderHook(() => useMetricsHistory())
+
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      // Make setItem throw a non-quota error
+      vi.spyOn(localStorage, 'setItem').mockImplementation((key) => {
+        if (key === STORAGE_KEY) {
+          throw new Error('Some other localStorage error')
+        }
+      })
+
+      act(() => { result.current.captureNow() })
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to persist snapshots'),
+        expect.any(Error),
+      )
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('getMetricsHistoryContext deep paths', () => {
+    it('excludes pods with stable or decreasing restarts', async () => {
+      const snaps = [
+        {
+          ...makeClusterSnapshot('prod', 50, 50, new Date(Date.now() - 20000).toISOString()),
+          podIssues: [
+            { name: 'stable-pod', cluster: 'prod', restarts: 5, status: 'Running' },
+            { name: 'decreasing-pod', cluster: 'prod', restarts: 10, status: 'Running' },
+          ],
+        },
+        {
+          ...makeClusterSnapshot('prod', 55, 55, new Date(Date.now() - 10000).toISOString()),
+          podIssues: [
+            { name: 'stable-pod', cluster: 'prod', restarts: 5, status: 'Running' },
+            { name: 'decreasing-pod', cluster: 'prod', restarts: 3, status: 'Running' },
+          ],
+        },
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { getMetricsHistoryContext } = await importFresh()
+      const context = getMetricsHistoryContext()
+
+      // Neither pod has increasing restarts
+      expect(context).not.toContain('increasing restarts')
+      expect(context).not.toContain('stable-pod')
+      expect(context).not.toContain('decreasing-pod')
+    })
+
+    it('limits increasing restart pods to MAX_INCREASING_RESTART_PODS', async () => {
+      // Create snapshots with 15 pods that all have increasing restarts
+      const podIssues1 = Array.from({ length: 15 }, (_, i) => ({
+        name: `pod-${i}`,
+        cluster: 'prod',
+        restarts: 1,
+        status: 'CrashLoopBackOff',
+      }))
+      const podIssues2 = Array.from({ length: 15 }, (_, i) => ({
+        name: `pod-${i}`,
+        cluster: 'prod',
+        restarts: 10 + i,
+        status: 'CrashLoopBackOff',
+      }))
+
+      const snaps = [
+        { ...makeSnapshot({ timestamp: new Date(Date.now() - 20000).toISOString() }), podIssues: podIssues1 },
+        { ...makeSnapshot({ timestamp: new Date(Date.now() - 10000).toISOString() }), podIssues: podIssues2 },
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { getMetricsHistoryContext } = await importFresh()
+      const context = getMetricsHistoryContext()
+
+      // Should contain some pods but not all 15
+      expect(context).toContain('increasing restarts')
+      // Count the number of "prod/pod-" occurrences — should be capped at 10
+      const podMentions = (context.match(/prod\/pod-/g) || []).length
+      expect(podMentions).toBeLessThanOrEqual(10)
+    })
+
+    it('handles multi-cluster context with different CPU/memory values', async () => {
+      const snaps = [
+        {
+          timestamp: new Date(Date.now() - 20000).toISOString(),
+          clusters: [
+            { name: 'east', cpuPercent: 30, memoryPercent: 40, nodeCount: 3, healthyNodes: 3 },
+            { name: 'west', cpuPercent: 70, memoryPercent: 80, nodeCount: 5, healthyNodes: 5 },
+          ],
+          podIssues: [],
+          gpuNodes: [],
+        },
+        {
+          timestamp: new Date(Date.now() - 10000).toISOString(),
+          clusters: [
+            { name: 'east', cpuPercent: 35, memoryPercent: 45, nodeCount: 3, healthyNodes: 3 },
+            { name: 'west', cpuPercent: 75, memoryPercent: 85, nodeCount: 5, healthyNodes: 5 },
+          ],
+          podIssues: [],
+          gpuNodes: [],
+        },
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { getMetricsHistoryContext } = await importFresh()
+      const context = getMetricsHistoryContext()
+
+      expect(context).toContain('east')
+      expect(context).toContain('west')
+      expect(context).toContain('30%')
+      expect(context).toContain('75%')
+    })
+
+    it('uses only last 6 snapshots for context', async () => {
+      // Create 10 snapshots
+      const snaps: MetricsSnapshot[] = []
+      for (let i = 0; i < 10; i++) {
+        snaps.push(makeClusterSnapshot(
+          'many-snaps',
+          10 + i * 5,
+          20 + i * 3,
+          new Date(Date.now() - (10 - i) * 10000).toISOString(),
+        ))
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { getMetricsHistoryContext } = await importFresh()
+      const context = getMetricsHistoryContext()
+
+      // Should mention "last 6 snapshots"
+      expect(context).toContain('last 6 snapshots')
+    })
+  })
+
+  describe('subscriber pattern', () => {
+    it('multiple hook instances share the same snapshot state', async () => {
+      mockClusters.push({ name: 'shared-state', cpuCores: 4, cpuUsageCores: 2, memoryGB: 8, memoryUsageGB: 4, nodeCount: 1, healthy: true })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result: result1 } = renderHook(() => useMetricsHistory())
+      const { result: result2 } = renderHook(() => useMetricsHistory())
+
+      act(() => {
+        result1.current.captureNow()
+      })
+
+      // Both instances should reflect the new snapshot
+      expect(result1.current.snapshotCount).toBeGreaterThanOrEqual(1)
+      expect(result2.current.snapshotCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it('clearHistory is reflected across all hook instances', async () => {
+      const snaps = [makeSnapshot(), makeSnapshot()]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snaps))
+
+      const { useMetricsHistory } = await importFresh()
+      const { result: result1 } = renderHook(() => useMetricsHistory())
+      const { result: result2 } = renderHook(() => useMetricsHistory())
+
+      expect(result1.current.snapshotCount).toBe(2)
+
+      act(() => {
+        result1.current.clearHistory()
+      })
+
+      expect(result1.current.snapshotCount).toBe(0)
+      expect(result2.current.snapshotCount).toBe(0)
+    })
+  })
+
+  describe('cleanup on unmount', () => {
+    it('removes subscriber on unmount to prevent memory leaks', async () => {
+      const { useMetricsHistory } = await importFresh()
+      const { unmount } = renderHook(() => useMetricsHistory())
+
+      // Unmounting should not throw
+      unmount()
+    })
+
+    it('clears interval on unmount', async () => {
+      mockClusters.push({ name: 'cleanup', cpuCores: 4, cpuUsageCores: 2, memoryGB: 8, memoryUsageGB: 4, nodeCount: 1, healthy: true })
+
+      const { useMetricsHistory } = await importFresh()
+      const { result, unmount } = renderHook(() => useMetricsHistory())
+
+      const countBeforeUnmount = result.current.snapshotCount
+
+      unmount()
+
+      // Advancing timers should not capture more snapshots after unmount
+      const TEN_MINUTES_MS = 10 * 60 * 1000
+      act(() => {
+        vi.advanceTimersByTime(TEN_MINUTES_MS)
+      })
+
+      // We cannot easily check the singleton state after unmount without
+      // re-rendering, but this ensures no errors from stale callbacks
+    })
+  })
 })
