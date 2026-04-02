@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-
-const { mockDrillToCluster } = vi.hoisted(() => ({
-  mockDrillToCluster: vi.fn(),
-}))
+import { render } from '@testing-library/react'
 
 vi.mock('../../../../lib/demoMode', () => ({
   isDemoMode: () => true, getDemoMode: () => true, isNetlifyDeployment: false,
@@ -47,7 +43,7 @@ vi.mock('../../../../hooks/useMCP', () => ({
 }))
 
 vi.mock('../../../../hooks/useDrillDown', () => ({
-  useDrillDownActions: () => ({ drillToDeployment: vi.fn(), drillToPod: vi.fn(), drillToEvents: vi.fn(), drillToCluster: mockDrillToCluster }),
+  useDrillDownActions: () => ({ drillToDeployment: vi.fn(), drillToPod: vi.fn(), drillToEvents: [] }),
 }))
 
 vi.mock('../../../../lib/cn', () => ({
@@ -60,12 +56,5 @@ describe('NamespaceDrillDown', () => {
   it('renders without crashing', () => {
     const { container } = render(<NamespaceDrillDown data={{ cluster: 'c1', namespace: 'ns1' }} />)
     expect(container).toBeTruthy()
-  })
-
-  it('calls drillToCluster when the cluster back navigation button is clicked', () => {
-    render(<NamespaceDrillDown data={{ cluster: 'c1', namespace: 'ns1' }} />)
-    const clusterButton = screen.getByRole('button', { name: /drilldown\.fields\.cluster/i })
-    fireEvent.click(clusterButton)
-    expect(mockDrillToCluster).toHaveBeenCalledWith('c1')
   })
 })

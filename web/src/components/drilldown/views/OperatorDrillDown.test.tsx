@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { OperatorDrillDown } from './OperatorDrillDown'
+import * as OperatorDrillDownModule from './OperatorDrillDown'
 
 describe('OperatorDrillDown Component', () => {
   it('exports OperatorDrillDown component', () => {
-    expect(OperatorDrillDown).toBeDefined()
-    expect(typeof OperatorDrillDown).toBe('function')
+    expect(OperatorDrillDownModule.OperatorDrillDown).toBeDefined()
+    expect(typeof OperatorDrillDownModule.OperatorDrillDown).toBe('function')
   })
 })

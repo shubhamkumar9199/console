@@ -1128,19 +1128,6 @@ describe('useStackDiscovery', () => {
     const { result, unmount } = renderHook(() => useStackDiscovery([]))
 
     expect(result.current).toHaveProperty('stacks')
-vi.mock('../useDemoMode', () => ({
-  getDemoMode: vi.fn(() => true),
-}))
-
-vi.mock('../../lib/kubectlProxy', () => ({
-  kubectlProxy: { exec: vi.fn() },
-}))
-
-import { useStackDiscovery } from '../useStackDiscovery'
-
-describe('useStackDiscovery', () => {
-  it('returns expected shape', () => {
-    const { result } = renderHook(() => useStackDiscovery([]))
     expect(result.current).toHaveProperty('isLoading')
     expect(result.current).toHaveProperty('error')
     expect(result.current).toHaveProperty('refetch')
@@ -1149,4 +1136,6 @@ describe('useStackDiscovery', () => {
     expect(typeof result.current.refetch).toBe('function')
     unmount()
   })
+})
+})
 })

@@ -3818,3 +3818,8 @@ describe('KubectlProxy — additional coverage', () => {
     })
   })
 })
+})
+})
+})
+})
+})

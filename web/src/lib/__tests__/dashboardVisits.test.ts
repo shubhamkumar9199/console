@@ -270,3 +270,6 @@ describe('prefetchTopDashboards', () => {
     expect(() => prefetchTopDashboards(undefined, 2)).not.toThrow()
   })
 })
+})
+})
+})

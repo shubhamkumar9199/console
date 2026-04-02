@@ -47,10 +47,7 @@ export default defineConfig(({ mode }) => ({
     __DEV_MODE__: process.env.VITE_DEV_MODE !== undefined
       ? JSON.stringify(process.env.VITE_DEV_MODE === 'true')
       : JSON.stringify(mode === 'development'),
-    // Strip console calls in production (replaces terser drop_console).
-    // IMPORTANT: Only use globalThis.console.* — bare "console.log" does
-    // literal text replacement that hits vendor/dependency code too,
-    // turning their console.log(...) into undefined(...) which crashes.
+    // Strip console/debugger in production (replaces terser drop_console)
     ...(mode === 'production' ? {
       'globalThis.console.log': 'undefined',
       'globalThis.console.info': 'undefined',

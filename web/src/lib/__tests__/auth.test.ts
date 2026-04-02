@@ -851,3 +851,6 @@ describe('AuthProvider', () => {
     expect(result.current.user?.onboarded).toBe(false)
   })
 })
+})
+})
+})

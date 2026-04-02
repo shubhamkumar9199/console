@@ -1576,3 +1576,5 @@ describe('useInsightEnrichment — multiple concurrent hook instances', () => {
     expect(result2.current.enrichedInsights[0].description).toBe('Shared AI')
   })
 })
+})
+})

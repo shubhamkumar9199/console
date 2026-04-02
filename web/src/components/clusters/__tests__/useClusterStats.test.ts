@@ -2,11 +2,11 @@
  * useClusterStats Hook Tests
  */
 import { describe, it, expect } from 'vitest'
-import { useClusterStats } from '../useClusterStats'
+import * as mod from '../useClusterStats'
 
 describe('useClusterStats', () => {
   it('exports useClusterStats hook', () => {
-    expect(useClusterStats).toBeDefined()
-    expect(typeof useClusterStats).toBe('function')
+    expect(mod.useClusterStats).toBeDefined()
+    expect(typeof mod.useClusterStats).toBe('function')
   })
 })

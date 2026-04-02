@@ -457,3 +457,5 @@ describe('edge cases', () => {
     expect(result.current.isFiltered).toBe(true)
   })
 })
+})
+})

@@ -16,7 +16,6 @@ const mockUseClusters = vi.fn(() => ({
 
 vi.mock('../useMCP', () => ({
   useClusters: (...args: unknown[]) => mockUseClusters(...args),
-  useClusters: vi.fn(() => ({ deduplicatedClusters: [], clusters: [], isLoading: false })),
 }))
 
 const mockExec = vi.fn()
@@ -53,21 +52,6 @@ vi.mock('../../lib/utils/concurrency', () => ({
   settledWithConcurrency: vi.fn(async (tasks: Array<() => Promise<unknown>>) =>
     Promise.all(tasks.map((t) => t()))
   ),
-vi.mock('../../lib/constants/network', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
-  return { ...actual,
-  FETCH_DEFAULT_TIMEOUT_MS: 10000,
-} })
-vi.mock('../useDemoMode', () => ({
-  useDemoMode: vi.fn(() => ({ isDemoMode: true, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })),
-}))
-vi.mock('../../lib/modeTransition', () => ({
-  registerRefetch: vi.fn(() => vi.fn()),
-  registerCacheReset: vi.fn(),
-  unregisterCacheReset: vi.fn(),
-}))
-vi.mock('../../lib/utils/concurrency', () => ({
-  settledWithConcurrency: vi.fn(async (tasks: Array<() => Promise<unknown>>) => Promise.all(tasks.map(t => t()))),
 }))
 
 import { useKubescape } from '../useKubescape'
@@ -1109,4 +1093,7 @@ describe('useKubescape — edge cases', () => {
     expect(status.frameworks[1].score).toBe(Math.max(0, status.overallScore - 3))
     unmount()
   })
+})
+})
+})
 })

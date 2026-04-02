@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { BreadcrumbNav } from './BreadcrumbNav'
+import * as BreadcrumbNavModule from './BreadcrumbNav'
 
 describe('BreadcrumbNav Component', () => {
   it('exports BreadcrumbNav component', () => {
-    expect(BreadcrumbNav).toBeDefined()
-    expect(typeof BreadcrumbNav).toBe('function')
+    expect(BreadcrumbNavModule.BreadcrumbNav).toBeDefined()
+    expect(typeof BreadcrumbNavModule.BreadcrumbNav).toBe('function')
   })
 })

@@ -603,3 +603,6 @@ describe('useClusterProgress', () => {
     expect(result.current.progress!.name).toBe('k3d-cluster')
   })
 })
+})
+})
+})
