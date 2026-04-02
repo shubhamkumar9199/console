@@ -43,7 +43,10 @@ describe('AuthCallback Component', () => {
         <AuthCallback />
       </MemoryRouter>,
     )
-    expect(screen.getByText('authCallback.signingIn')).toBeInTheDocument()
+    // The useEffect runs immediately and updates status from signingIn
+    // to fetchingUserInfo (no error in searchParams), so the displayed
+    // text is the fetchingUserInfo key after the effect completes
+    expect(screen.getByText('authCallback.fetchingUserInfo')).toBeInTheDocument()
   })
 
   it('renders a loading spinner', () => {

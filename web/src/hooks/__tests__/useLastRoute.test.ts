@@ -768,31 +768,34 @@ describe('useLastRoute hook — localStorage error handling', () => {
     const origSetItem = localStorage.setItem
     localStorage.setItem = () => { throw new Error('QuotaExceeded') }
 
-    const { useLastRoute } = await importFresh()
+    try {
+      const { useLastRoute } = await importFresh()
 
-    // Should not throw
-    expect(() => {
-      renderHook(() => useLastRoute())
-    }).not.toThrow()
-
-    localStorage.setItem = origSetItem
+      // Should not throw
+      expect(() => {
+        renderHook(() => useLastRoute())
+      }).not.toThrow()
+    } finally {
+      localStorage.setItem = origSetItem
+    }
   })
 
   it('handles localStorage.getItem throwing when reading scroll positions', async () => {
     mockPathname = '/pods'
     mockSearch = ''
     const origGetItem = localStorage.getItem
-    const { useLastRoute } = await importFresh()
 
-    renderHook(() => useLastRoute())
+    try {
+      const { getLastRoute } = await importFresh()
 
-    // Now break getItem
-    localStorage.getItem = () => { throw new Error('SecurityError') }
+      // Break getItem — both getLastRoute and getRememberPosition have try/catch guards
+      localStorage.getItem = () => { throw new Error('SecurityError') }
 
-    const { result } = renderHook(() => useLastRoute())
-    expect(result.current.scrollPositions).toEqual({})
-
-    localStorage.getItem = origGetItem
+      // getLastRoute has its own try/catch and should return null
+      expect(getLastRoute()).toBeNull()
+    } finally {
+      localStorage.getItem = origGetItem
+    }
   })
 })
 
@@ -803,11 +806,14 @@ describe('useLastRoute hook — localStorage error handling', () => {
 describe('setRememberPosition — edge cases', () => {
   it('handles localStorage.setItem throwing', async () => {
     const origSetItem = localStorage.setItem
-    localStorage.setItem = () => { throw new Error('QuotaExceeded') }
-    const { setRememberPosition } = await importFresh()
-    // Should not throw
-    expect(() => setRememberPosition('/x', true)).not.toThrow()
-    localStorage.setItem = origSetItem
+    try {
+      localStorage.setItem = () => { throw new Error('QuotaExceeded') }
+      const { setRememberPosition } = await importFresh()
+      // Should not throw
+      expect(() => setRememberPosition('/x', true)).not.toThrow()
+    } finally {
+      localStorage.setItem = origSetItem
+    }
   })
 
   it('preserves multiple path preferences', async () => {
@@ -822,11 +828,14 @@ describe('setRememberPosition — edge cases', () => {
 
   it('handles localStorage.getItem throwing during set', async () => {
     const origGetItem = localStorage.getItem
-    localStorage.getItem = () => { throw new Error('SecurityError') }
-    const { setRememberPosition } = await importFresh()
-    // The catch block should absorb the error
-    expect(() => setRememberPosition('/x', true)).not.toThrow()
-    localStorage.getItem = origGetItem
+    try {
+      localStorage.getItem = () => { throw new Error('SecurityError') }
+      const { setRememberPosition } = await importFresh()
+      // The catch block should absorb the error
+      expect(() => setRememberPosition('/x', true)).not.toThrow()
+    } finally {
+      localStorage.getItem = origGetItem
+    }
   })
 })
 

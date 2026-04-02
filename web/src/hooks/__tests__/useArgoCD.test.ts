@@ -176,7 +176,7 @@ describe('useArgoCDApplications', () => {
     unmount()
   })
 
-  it('falls back to demo when API returns empty items array', async () => {
+  it('uses real data when API returns empty items with isDemoData false', async () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse({ items: [], isDemoData: false })
     )
@@ -184,9 +184,9 @@ describe('useArgoCDApplications', () => {
     const { result, unmount } = renderHook(() => useArgoCDApplications())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // Empty items with isDemoData=false triggers mock fallback
-    expect(result.current.isDemoData).toBe(true)
-    expect(result.current.applications.length).toBeGreaterThan(0)
+    // Empty items with isDemoData=false is kept as real data (#4201)
+    expect(result.current.isDemoData).toBe(false)
+    expect(result.current.applications).toEqual([])
     unmount()
   })
 
@@ -453,7 +453,7 @@ describe('useArgoCDHealth', () => {
     unmount()
   })
 
-  it('falls back to demo when API returns 0-total stats', async () => {
+  it('uses real data when API returns 0-total stats with isDemoData false', async () => {
     const zeroStats = { healthy: 0, degraded: 0, progressing: 0, missing: 0, unknown: 0 }
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse({ stats: zeroStats, isDemoData: false })
@@ -462,9 +462,10 @@ describe('useArgoCDHealth', () => {
     const { result, unmount } = renderHook(() => useArgoCDHealth())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // Zero total with isDemoData=false means no ArgoCD apps found => falls to mock
-    expect(result.current.isDemoData).toBe(true)
-    expect(result.current.total).toBeGreaterThan(0)
+    // Zero total with isDemoData=false is kept as real data (#4201)
+    expect(result.current.isDemoData).toBe(false)
+    expect(result.current.total).toBe(0)
+    expect(result.current.healthyPercent).toBe(0)
     unmount()
   })
 
@@ -731,7 +732,7 @@ describe('useArgoCDSyncStatus', () => {
     unmount()
   })
 
-  it('falls back to demo when API returns 0-total stats', async () => {
+  it('uses real data when API returns 0-total sync stats with isDemoData false', async () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse({ stats: { synced: 0, outOfSync: 0, unknown: 0 }, isDemoData: false })
     )
@@ -739,8 +740,11 @@ describe('useArgoCDSyncStatus', () => {
     const { result, unmount } = renderHook(() => useArgoCDSyncStatus())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.isDemoData).toBe(true)
-    expect(result.current.total).toBeGreaterThan(0)
+    // Zero totals with isDemoData=false is kept as real data (#4201)
+    expect(result.current.isDemoData).toBe(false)
+    expect(result.current.total).toBe(0)
+    expect(result.current.syncedPercent).toBe(0)
+    expect(result.current.outOfSyncPercent).toBe(0)
     unmount()
   })
 

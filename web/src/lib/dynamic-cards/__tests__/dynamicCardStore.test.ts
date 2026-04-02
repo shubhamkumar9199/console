@@ -85,15 +85,16 @@ describe('saveDynamicCards', () => {
 
   it('handles localStorage write errors gracefully', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    const originalSetItem = localStorage.setItem.bind(localStorage)
+    localStorage.setItem = () => {
       throw new Error('QuotaExceeded')
-    })
+    }
 
     expect(() => saveDynamicCards()).not.toThrow()
     expect(spy).toHaveBeenCalled()
 
     spy.mockRestore()
-    setItemSpy.mockRestore()
+    localStorage.setItem = originalSetItem
   })
 })
 

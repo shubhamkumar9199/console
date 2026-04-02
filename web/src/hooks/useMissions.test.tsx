@@ -5485,26 +5485,22 @@ describe('setActiveMission edge cases', () => {
 // ── selectAgent: wsSend failure logging ─────────────────────────────────────
 
 describe('selectAgent wsSend failure', () => {
-  it('logs error when wsSend exhausts retries during selectAgent', async () => {
+  it('logs error when ensureConnection times out during selectAgent', async () => {
     vi.useFakeTimers()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       const { result } = renderHook(() => useMissions(), { wrapper })
 
-      // Connect but don't open WS
+      // Call selectAgent — ensureConnection creates a WS
       act(() => { result.current.selectAgent('new-agent') })
-      // WS is in CONNECTING — simulate open to pass ensureConnection
-      await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
 
-      // Now close the WS so wsSend retries will fail
-      MockWebSocket.lastInstance!.readyState = MockWebSocket.CLOSED
+      // Do NOT simulate WS open — let ensureConnection's 5s timeout fire
+      await act(async () => { vi.advanceTimersByTime(6_000) })
 
-      // Advance past retry delays (3 retries * 1s each)
-      act(() => { vi.advanceTimersByTime(4_000) })
-
-      // Should have logged the wsSend failure
+      // ensureConnection rejects with CONNECTION_TIMEOUT, selectAgent .catch() logs the error
       expect(errorSpy).toHaveBeenCalledWith(
-        '[Missions] Failed to send agent selection after retries',
+        '[Missions] Failed to select agent:',
+        expect.any(Error),
       )
     } finally {
       vi.useRealTimers()
@@ -5549,23 +5545,17 @@ describe('stream: agent field on appended chunks', () => {
 // ── executeMission: wsSend failure path ─────────────────────────────────────
 
 describe('executeMission wsSend failure', () => {
-  it('transitions mission to failed when wsSend onFailure fires during executeMission', async () => {
+  it('transitions mission to failed when ensureConnection times out during executeMission', async () => {
     vi.useFakeTimers()
     try {
       const { result } = renderHook(() => useMissions(), { wrapper })
       act(() => { result.current.startMission(defaultParams) })
       await act(async () => { await Promise.resolve() })
 
-      // Simulate WS open to pass ensureConnection
-      await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
+      // Do NOT simulate WS open — let ensureConnection's 5s timeout fire
+      await act(async () => { vi.advanceTimersByTime(6_000) })
 
-      // Immediately close the WS so retries fail
-      MockWebSocket.lastInstance!.readyState = MockWebSocket.CLOSED
-
-      // Advance past all retry delays
-      act(() => { vi.advanceTimersByTime(5_000) })
-
-      // Mission should have been failed due to wsSend exhaustion
+      // ensureConnection rejects with CONNECTION_TIMEOUT, executeMission .catch() fires
       const mission = result.current.missions[0]
       expect(mission.status).toBe('failed')
     } finally {
@@ -5577,7 +5567,7 @@ describe('executeMission wsSend failure', () => {
 // ── runSavedMission: wsSend failure path ────────────────────────────────────
 
 describe('runSavedMission wsSend failure', () => {
-  it('transitions to failed when wsSend fails during runSavedMission', async () => {
+  it('transitions to failed when ensureConnection times out during runSavedMission', async () => {
     vi.useFakeTimers()
     try {
       const mission = {
@@ -5596,12 +5586,8 @@ describe('runSavedMission wsSend failure', () => {
       const { result } = renderHook(() => useMissions(), { wrapper })
       act(() => { result.current.runSavedMission('wsfail-1') })
 
-      // Open then immediately close WS
-      await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
-      MockWebSocket.lastInstance!.readyState = MockWebSocket.CLOSED
-
-      // Advance past retries
-      act(() => { vi.advanceTimersByTime(5_000) })
+      // Do NOT simulate WS open — let ensureConnection's 5s timeout fire
+      await act(async () => { vi.advanceTimersByTime(6_000) })
 
       const m = result.current.missions.find(m => m.id === 'wsfail-1')
       expect(m?.status).toBe('failed')

@@ -1,6 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
+// Pin React across vi.resetModules() calls — the mock factory caches the real
+// module on first invocation so every fresh import gets the SAME React instance.
+// Without this, renderHook (which uses the original React) and hooks from fresh
+// modules would use different React instances, causing "Invalid hook call".
+const { reactCache, jsxCache } = vi.hoisted(() => ({
+  reactCache: { mod: null as unknown },
+  jsxCache: { mod: null as unknown },
+}))
+vi.mock('react', async (importOriginal) => {
+  if (!reactCache.mod) reactCache.mod = await importOriginal()
+  return reactCache.mod
+})
+vi.mock('react/jsx-runtime', async (importOriginal) => {
+  if (!jsxCache.mod) jsxCache.mod = await importOriginal()
+  return jsxCache.mod
+})
+
 vi.mock('../useDemoMode', () => ({
   useDemoMode: vi.fn(() => ({ isDemoMode: true })),
 }))
@@ -566,7 +583,7 @@ describe('useSidebarConfig — expanded coverage', () => {
   })
 
   // --- migrateConfig: removes deprecated routes ---
-  it('migrates stored config by removing deprecated /apps route', () => {
+  it('migrates stored config by removing deprecated /apps route', async () => {
     const storedConfig = {
       primaryNav: [
         { id: 'dashboard', name: 'Dashboard', icon: 'LayoutDashboard', href: '/', type: 'link', order: 0 },
@@ -583,10 +600,10 @@ describe('useSidebarConfig — expanded coverage', () => {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedConfig))
 
-    // Force re-init by resetting modules
+    // Fresh module instance needed so initSharedConfig reads from localStorage
     vi.resetModules()
-    // Re-import with mocks re-applied would be complex, so we use the hook
-    const { result } = renderHook(() => useSidebarConfig())
+    const freshMod = await import('../useSidebarConfig')
+    const { result } = renderHook(() => freshMod.useSidebarConfig())
 
     // /apps should be removed
     const hasApps = result.current.config.primaryNav.some(item => item.href === '/apps')
@@ -594,7 +611,7 @@ describe('useSidebarConfig — expanded coverage', () => {
   })
 
   // --- migrateConfig: adds missing default primary nav items ---
-  it('migrates stored config by adding missing default primary nav items', () => {
+  it('migrates stored config by adding missing default primary nav items', async () => {
     // Store a config missing the "alerts" dashboard
     const storedConfig = {
       primaryNav: [
@@ -612,7 +629,8 @@ describe('useSidebarConfig — expanded coverage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedConfig))
     vi.resetModules()
 
-    const { result } = renderHook(() => useSidebarConfig())
+    const freshMod = await import('../useSidebarConfig')
+    const { result } = renderHook(() => freshMod.useSidebarConfig())
 
     // Missing default items should be added during migration
     const hasAlerts = result.current.config.primaryNav.some(item => item.id === 'alerts')
@@ -620,7 +638,7 @@ describe('useSidebarConfig — expanded coverage', () => {
   })
 
   // --- migrateConfig: adds missing default secondary nav items ---
-  it('migrates stored config by adding missing default secondary nav items', () => {
+  it('migrates stored config by adding missing default secondary nav items', async () => {
     // Store a config with no secondary nav items
     const storedConfig = {
       primaryNav: [
@@ -636,7 +654,8 @@ describe('useSidebarConfig — expanded coverage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedConfig))
     vi.resetModules()
 
-    const { result } = renderHook(() => useSidebarConfig())
+    const freshMod = await import('../useSidebarConfig')
+    const { result } = renderHook(() => freshMod.useSidebarConfig())
 
     // Default secondary items (marketplace, history, namespaces, users, settings) should be added
     expect(result.current.config.secondaryNav.length).toBeGreaterThan(0)
@@ -645,7 +664,7 @@ describe('useSidebarConfig — expanded coverage', () => {
   })
 
   // --- initSharedConfig: migrates from old storage key ---
-  it('migrates config from old storage key to current key', () => {
+  it('migrates config from old storage key to current key', async () => {
     const oldConfig = {
       primaryNav: [
         { id: 'dashboard', name: 'Dashboard', icon: 'LayoutDashboard', href: '/', type: 'link', order: 0 },
@@ -660,7 +679,8 @@ describe('useSidebarConfig — expanded coverage', () => {
     localStorage.setItem(OLD_STORAGE_KEY, JSON.stringify(oldConfig))
     vi.resetModules()
 
-    const { result } = renderHook(() => useSidebarConfig())
+    const freshMod = await import('../useSidebarConfig')
+    const { result } = renderHook(() => freshMod.useSidebarConfig())
 
     // Old key should be removed after migration
     expect(localStorage.getItem(OLD_STORAGE_KEY)).toBeNull()
@@ -670,11 +690,12 @@ describe('useSidebarConfig — expanded coverage', () => {
   })
 
   // --- initSharedConfig: handles corrupt JSON in localStorage ---
-  it('falls back to default config when localStorage contains invalid JSON', () => {
+  it('falls back to default config when localStorage contains invalid JSON', async () => {
     localStorage.setItem(STORAGE_KEY, 'not-valid-json{{{')
     vi.resetModules()
 
-    const { result } = renderHook(() => useSidebarConfig())
+    const freshMod = await import('../useSidebarConfig')
+    const { result } = renderHook(() => freshMod.useSidebarConfig())
 
     // Should fall back to default config
     expect(result.current.config.collapsed).toBe(false)
@@ -713,12 +734,11 @@ describe('useSidebarConfig — expanded coverage', () => {
     vi.resetModules()
     const freshMod = await import('../useSidebarConfig')
 
-    // Initialize shared config first
-    renderHook(() => freshMod.useSidebarConfig())
-
+    // Fetch enabled dashboards FIRST so enabledDashboardIds is set
+    // before initSharedConfig runs (which applies the filter)
     await freshMod.fetchEnabledDashboards()
 
-    // After fetch, the hook should reflect the promoted dashboard
+    // Now render the hook — initSharedConfig will apply the dashboard filter
     const { result } = renderHook(() => freshMod.useSidebarConfig())
     const computeItem = result.current.config.primaryNav.find(i => i.id === 'compute')
     expect(computeItem).toBeDefined()
@@ -744,6 +764,9 @@ describe('useSidebarConfig — expanded coverage', () => {
   // --- setConfig with function updater uses current shared state ---
   it('setConfig function updater receives current config', () => {
     const { result } = renderHook(() => useSidebarConfig())
+
+    // Establish known initial state
+    act(() => { result.current.setCollapsed(false) })
 
     // Set width first to establish state
     act(() => { result.current.setWidth(350) })
@@ -807,7 +830,7 @@ describe('useSidebarConfig — expanded coverage', () => {
   })
 
   // --- migrateConfig: no-op when all items already present ---
-  it('migrateConfig is a no-op when config has all default items', () => {
+  it('migrateConfig is a no-op when config has all default items', async () => {
     // Store a full default config (no missing items, no deprecated routes)
     const { result: defaultResult } = renderHook(() => useSidebarConfig())
     const fullConfig = defaultResult.current.config
@@ -815,7 +838,8 @@ describe('useSidebarConfig — expanded coverage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fullConfig))
     vi.resetModules()
 
-    const { result } = renderHook(() => useSidebarConfig())
+    const freshMod = await import('../useSidebarConfig')
+    const { result } = renderHook(() => freshMod.useSidebarConfig())
 
     // Should have the same items
     expect(result.current.config.primaryNav.length).toBe(fullConfig.primaryNav.length)

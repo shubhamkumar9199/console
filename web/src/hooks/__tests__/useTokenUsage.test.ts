@@ -17,21 +17,16 @@ vi.mock('../useDemoMode', () => ({
   getDemoMode: vi.fn(() => mockDemoMode),
 }))
 
-vi.mock('../../lib/constants', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
-  return { ...actual,
+vi.mock('../../lib/constants', () => ({
   LOCAL_AGENT_HTTP_URL: 'http://localhost:8585',
-} })
+}))
 
-vi.mock('../../lib/constants/network', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
-  return { ...actual,
+vi.mock('../../lib/constants/network', () => ({
   QUICK_ABORT_TIMEOUT_MS: 2000,
-} })
+}))
 
 import { useTokenUsage, setActiveTokenCategory, getActiveTokenCategory, addCategoryTokens } from '../useTokenUsage'
 import type { TokenCategory } from '../useTokenUsage'
-import { isAgentUnavailable, reportAgentDataSuccess, reportAgentDataError } from '../useLocalAgent'
 
 describe('useTokenUsage', () => {
   beforeEach(() => {

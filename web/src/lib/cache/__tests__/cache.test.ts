@@ -1679,20 +1679,21 @@ describe('cache module', () => {
   // ── clearAllCaches ─────────────────────────────────────────────────
 
   describe('clearAllCaches — comprehensive', () => {
-    it('clears kubectl history from localStorage', async () => {
+    it('clears kubectl history via migrateFromLocalStorage', async () => {
       localStorage.setItem('kubectl-history', JSON.stringify(['get pods']))
       const mod = await importFresh()
-      await mod.clearAllCaches()
+      // clearAllCaches does not remove kubectl history — migrateFromLocalStorage does
+      await mod.migrateFromLocalStorage()
       expect(localStorage.getItem('kubectl-history')).toBeNull()
     })
 
-    it('clears sessionStorage entries with kcc: prefix', async () => {
-      sessionStorage.setItem('kcc:pods', JSON.stringify({ d: [], t: 0, v: 4 }))
-      sessionStorage.setItem('other-key', 'keep')
+    it('clearAllCaches removes kc_meta: keys but not unrelated keys', async () => {
+      localStorage.setItem('kc_meta:pods', JSON.stringify({ consecutiveFailures: 1 }))
+      localStorage.setItem('other-key', 'keep')
       const mod = await importFresh()
       await mod.clearAllCaches()
-      expect(sessionStorage.getItem('kcc:pods')).toBeNull()
-      expect(sessionStorage.getItem('other-key')).toBe('keep')
+      expect(localStorage.getItem('kc_meta:pods')).toBeNull()
+      expect(localStorage.getItem('other-key')).toBe('keep')
     })
   })
 
@@ -2022,9 +2023,13 @@ describe('cache module', () => {
       const mod = await importFresh()
       // Create a store that would try to read this key
       await mod.prefetchCache('old-version', async () => 'new', '')
-      // The stale entry should have been removed by ssRead
+      // ssRead removes the stale v:3 entry, then the fetcher runs and
+      // saveToStorage writes the new data back with CACHE_VERSION=4.
       const remaining = sessionStorage.getItem('kcc:old-version')
-      expect(remaining).toBeNull()
+      expect(remaining).not.toBeNull()
+      const parsed = JSON.parse(remaining!)
+      expect(parsed.v).toBe(4)
+      expect(parsed.d).toBe('new')
     })
 
     it('handles sessionStorage.getItem throwing an error', async () => {

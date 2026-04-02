@@ -1147,6 +1147,10 @@ describe('send() gating: opted-out prevents event delivery', () => {
     const mod = await import('../analytics')
     // initAnalytics + simulate user interaction would normally be needed,
     // but since opt-out is checked first in send(), events are dropped
+    // Ensure sendBeacon exists on navigator (JSDOM does not provide it)
+    if (!navigator.sendBeacon) {
+      Object.defineProperty(navigator, 'sendBeacon', { value: vi.fn(), configurable: true, writable: true })
+    }
     const beaconSpy = vi.spyOn(navigator, 'sendBeacon').mockReturnValue(true)
     mod.emitCardAdded('test-card', 'manual')
     // sendBeacon should NOT have been called because opted out
@@ -1164,6 +1168,10 @@ describe('send() gating: uninitialized prevents event delivery', () => {
 
   it('send drops events when initAnalytics has not been called', async () => {
     const mod = await import('../analytics')
+    // Ensure sendBeacon exists on navigator (JSDOM does not provide it)
+    if (!navigator.sendBeacon) {
+      Object.defineProperty(navigator, 'sendBeacon', { value: vi.fn(), configurable: true, writable: true })
+    }
     const beaconSpy = vi.spyOn(navigator, 'sendBeacon').mockReturnValue(true)
     // Call emit without calling initAnalytics first
     mod.emitPageView('/test')
@@ -1224,6 +1232,10 @@ describe('initAnalytics automated environment detection', () => {
     mod.initAnalytics()
     // After init with webdriver=true, analytics should not be initialized
     // Verify by checking that emitting does not trigger sendBeacon
+    // Ensure sendBeacon exists on navigator (JSDOM does not provide it)
+    if (!navigator.sendBeacon) {
+      Object.defineProperty(navigator, 'sendBeacon', { value: vi.fn(), configurable: true, writable: true })
+    }
     const beaconSpy = vi.spyOn(navigator, 'sendBeacon').mockReturnValue(true)
     mod.emitPageView('/test')
     expect(beaconSpy).not.toHaveBeenCalled()
@@ -1240,6 +1252,10 @@ describe('initAnalytics automated environment detection', () => {
     })
     const mod = await import('../analytics')
     mod.initAnalytics()
+    // Ensure sendBeacon exists on navigator (JSDOM does not provide it)
+    if (!navigator.sendBeacon) {
+      Object.defineProperty(navigator, 'sendBeacon', { value: vi.fn(), configurable: true, writable: true })
+    }
     const beaconSpy = vi.spyOn(navigator, 'sendBeacon').mockReturnValue(true)
     mod.emitCardAdded('test', 'auto')
     expect(beaconSpy).not.toHaveBeenCalled()
@@ -1259,6 +1275,10 @@ describe('initAnalytics automated environment detection', () => {
     })
     const mod = await import('../analytics')
     mod.initAnalytics()
+    // Ensure sendBeacon exists on navigator (JSDOM does not provide it)
+    if (!navigator.sendBeacon) {
+      Object.defineProperty(navigator, 'sendBeacon', { value: vi.fn(), configurable: true, writable: true })
+    }
     const beaconSpy = vi.spyOn(navigator, 'sendBeacon').mockReturnValue(true)
     mod.emitCardAdded('test', 'auto')
     expect(beaconSpy).not.toHaveBeenCalled()

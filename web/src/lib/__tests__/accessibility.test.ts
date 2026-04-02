@@ -437,9 +437,8 @@ describe('getSeverityColors', () => {
 
 describe('saveAccessibilitySettings — error handling', () => {
   it('does not throw when localStorage.setItem throws', () => {
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError')
-    })
+    const origSetItem = localStorage.setItem
+    localStorage.setItem = () => { throw new Error('QuotaExceededError') }
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     expect(() => saveAccessibilitySettings({
@@ -453,14 +452,13 @@ describe('saveAccessibilitySettings — error handling', () => {
       expect.any(Error),
     )
 
-    setItemSpy.mockRestore()
+    localStorage.setItem = origSetItem
     consoleSpy.mockRestore()
   })
 
   it('does not dispatch custom event when localStorage.setItem throws', () => {
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError')
-    })
+    const origSetItem = localStorage.setItem
+    localStorage.setItem = () => { throw new Error('QuotaExceededError') }
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const handler = vi.fn()
     window.addEventListener('kubestellar-settings-changed', handler)
@@ -475,7 +473,7 @@ describe('saveAccessibilitySettings — error handling', () => {
     expect(handler).not.toHaveBeenCalled()
 
     window.removeEventListener('kubestellar-settings-changed', handler)
-    setItemSpy.mockRestore()
+    localStorage.setItem = origSetItem
     consoleSpy.mockRestore()
   })
 })
@@ -486,9 +484,8 @@ describe('saveAccessibilitySettings — error handling', () => {
 
 describe('loadAccessibilitySettings — localStorage.getItem error', () => {
   it('returns defaults when localStorage.getItem throws', () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('SecurityError: access denied')
-    })
+    const origGetItem = localStorage.getItem
+    localStorage.getItem = () => { throw new Error('SecurityError: access denied') }
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const settings = loadAccessibilitySettings()
@@ -501,7 +498,7 @@ describe('loadAccessibilitySettings — localStorage.getItem error', () => {
       expect.any(Error),
     )
 
-    getItemSpy.mockRestore()
+    localStorage.getItem = origGetItem
     consoleSpy.mockRestore()
   })
 })

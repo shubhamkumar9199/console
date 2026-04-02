@@ -55,6 +55,21 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('not available')))
+
+  // Re-set mock return values after clearAllMocks/restoreAllMocks which strip implementations
+  mockUseClusters.mockReturnValue({
+    deduplicatedClusters: [{ name: 'prod-cluster', reachable: true }],
+    clusters: [{ name: 'prod-cluster', reachable: true }],
+    isLoading: false,
+  })
+
+  mockUseGlobalFilters.mockReturnValue({
+    selectedClusters: [] as string[],
+    setSelectedClusters: vi.fn(),
+    selectedNamespaces: [] as string[],
+    setSelectedNamespaces: vi.fn(),
+    isAllClustersSelected: true,
+  })
 })
 
 afterEach(() => {

@@ -2,18 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 
 let mockDemoMode = true
-let mockIsDemoModeForced = true
 
 vi.mock('../useDemoMode', () => ({
   getDemoMode: vi.fn(() => mockDemoMode),
-  isDemoModeForced: mockIsDemoModeForced,
+  isDemoModeForced: true,
 }))
 
-vi.mock('../../lib/constants', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
-  return { ...actual,
+vi.mock('../../lib/constants', () => ({
   STORAGE_KEY_TOKEN: 'kc-auth-token',
-} })
+}))
 
 import { useActiveUsers } from '../useActiveUsers'
 
@@ -24,7 +21,6 @@ describe('useActiveUsers', () => {
     sessionStorage.clear()
     vi.clearAllMocks()
     mockDemoMode = true
-    mockIsDemoModeForced = true
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ activeUsers: 5, totalConnections: 8 }), {
         status: 200,

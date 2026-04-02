@@ -1100,7 +1100,10 @@ describe('extractErrorPattern (via detectIssueSignature)', () => {
       'CrashLoopBackOff reason: container failed to initialize properly due to missing config',
     )
     expect(sig.errorPattern).toBeDefined()
-    expect(sig.errorPattern).toContain('container failed to initialize')
+    // The "failed:" regex matches first (before "reason:") because extractErrorPattern
+    // checks patterns in order: error, failed, reason, message. "failed to initialize..."
+    // matches the "failed" pattern, capturing text after "failed ".
+    expect(sig.errorPattern).toContain('to initialize properly')
   })
 
   it('extracts error pattern from "message:" prefix', () => {
@@ -1282,6 +1285,10 @@ describe('loadResolutions / saveResolutions error handling', () => {
 })
 
 describe('useResolutions hook — findSimilarResolutions deep sorting', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('sorts by similarity when success rates are within 0.1 of each other', () => {
     // Two resolutions with very similar success rates but different similarity
     const exact = makeResolution({

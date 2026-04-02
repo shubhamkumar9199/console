@@ -3830,12 +3830,27 @@ describe('AlertsContext — wave 2 deep coverage', () => {
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
     }
-    localStorage.setItem('kc_alert_rules', JSON.stringify([rule]))
-    localStorage.setItem('kc_alerts', JSON.stringify([]))
 
-    // First run: 90% usage
+    // Seed an existing alert at 90% usage — simulates a previous evaluation run
+    const existingAlert: Alert = {
+      id: 'existing-gpu-alert',
+      ruleId: 'update-details',
+      ruleName: 'GPU Update',
+      severity: 'critical',
+      status: 'firing',
+      message: 'GPU usage is 90.0% (9/10 GPUs allocated)',
+      details: { usagePercent: 90, allocatedGPUs: 9, totalGPUs: 10, threshold: 80 },
+      cluster: 'gpu-cluster',
+      resource: 'nvidia.com/gpu',
+      resourceKind: 'Resource',
+      firedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([rule]))
+    localStorage.setItem('kc_alerts', JSON.stringify([existingAlert]))
+
+    // Now inject MCP data at 95% usage — different from the seeded alert
     mockMCPData = {
-      gpuNodes: [{ cluster: 'gpu-cluster', gpuCount: 10, gpuAllocated: 9 }],
+      gpuNodes: [{ cluster: 'gpu-cluster', gpuCount: 20, gpuAllocated: 19 }],
       podIssues: [],
       clusters: [{ name: 'gpu-cluster', healthy: true, nodeCount: 1 }],
       isLoading: false,
@@ -3849,32 +3864,13 @@ describe('AlertsContext — wave 2 deep coverage', () => {
       result.current.evaluateConditions()
     })
 
-    const firstAlerts = result.current.alerts.filter(a => a.ruleId === 'update-details')
-    expect(firstAlerts.length).toBe(1)
-    const firstMessage = firstAlerts[0].message
-
-    // Second run: different usage — 95%
-    mockMCPData = {
-      gpuNodes: [{ cluster: 'gpu-cluster', gpuCount: 20, gpuAllocated: 19 }],
-      podIssues: [],
-      clusters: [{ name: 'gpu-cluster', healthy: true, nodeCount: 1 }],
-      isLoading: false,
-      error: null,
-    }
-
-    // Update the ref manually since our mock won't re-trigger the onData effect
-    await act(async () => { vi.advanceTimersByTime(0) })
-
-    await act(async () => {
-      result.current.evaluateConditions()
-    })
-
-    const secondAlerts = result.current.alerts.filter(a => a.ruleId === 'update-details')
-    // Still 1 alert (updated, not duplicated)
-    expect(secondAlerts.length).toBe(1)
-    // Message should be updated
-    expect(secondAlerts[0].message).not.toBe(firstMessage)
-    expect(secondAlerts[0].message).toContain('95.0%')
+    const alerts = result.current.alerts.filter(a => a.ruleId === 'update-details')
+    // Still 1 alert (updated in place, not duplicated)
+    expect(alerts.length).toBe(1)
+    // Message should reflect the new 95% usage, not the old 90%
+    expect(alerts[0].message).toContain('95.0%')
+    // Original firedAt should be preserved (alert was updated, not recreated)
+    expect(alerts[0].firedAt).toBe('2024-01-01T00:00:00Z')
   })
 
   // ── W2-21. saveNotifiedAlertKeys prunes old entries ──────────────────

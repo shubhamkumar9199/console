@@ -631,12 +631,12 @@ describe('useDataSource — api type', () => {
       })
     )
 
-    // Initial fetch
-    await act(async () => { await vi.runAllTimersAsync() })
+    // Wait for the initial fetch to complete (triggered by useEffect)
+    await act(async () => { await vi.advanceTimersByTimeAsync(100) })
     const initialCallCount = mockFetch.mock.calls.length
     expect(initialCallCount).toBeGreaterThanOrEqual(1)
 
-    // Advance by poll interval
+    // Advance by poll interval — should trigger at least one more fetch
     await act(async () => { await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS) })
     expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount)
 

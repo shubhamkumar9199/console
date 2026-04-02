@@ -12,20 +12,79 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 
 // ---------------------------------------------------------------------------
-// Mocks
+// Mocks - all variables used inside vi.mock factories must be hoisted
+// because vi.mock is hoisted above all other declarations by vitest
 // ---------------------------------------------------------------------------
 
-const mockDemoMode = vi.fn(() => false)
+const {
+  registeredHooks,
+  mockDemoMode,
+  mockPodIssues,
+  mockEvents,
+  mockDeployments,
+  mockDeploymentIssues,
+  mockClusters,
+  mockPVCs,
+  mockServices,
+  mockOperators,
+  mockHelmReleases,
+  mockConfigMaps,
+  mockSecrets,
+  mockIngresses,
+  mockNodes,
+  mockJobs,
+  mockCronJobs,
+  mockStatefulSets,
+  mockDaemonSets,
+  mockHPAs,
+  mockReplicaSets,
+  mockPVs,
+  mockResourceQuotas,
+  mockLimitRanges,
+  mockNetworkPolicies,
+  mockNamespaces,
+  mockOperatorSubscriptions,
+  mockServiceAccounts,
+  mockK8sRoles,
+  mockK8sRoleBindings,
+} = vi.hoisted(() => ({
+  registeredHooks: new Map<string, (...args: unknown[]) => unknown>(),
+  mockDemoMode: vi.fn(() => false),
+  mockPodIssues: vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockEvents: vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockDeployments: vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockDeploymentIssues: vi.fn(() => ({ issues: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockClusters: vi.fn(() => ({ clusters: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockPVCs: vi.fn(() => ({ pvcs: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockServices: vi.fn(() => ({ services: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockOperators: vi.fn(() => ({ operators: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockHelmReleases: vi.fn(() => ({ releases: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockConfigMaps: vi.fn(() => ({ configmaps: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockSecrets: vi.fn(() => ({ secrets: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockIngresses: vi.fn(() => ({ ingresses: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockNodes: vi.fn(() => ({ nodes: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockJobs: vi.fn(() => ({ jobs: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockCronJobs: vi.fn(() => ({ cronjobs: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockStatefulSets: vi.fn(() => ({ statefulsets: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockDaemonSets: vi.fn(() => ({ daemonsets: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockHPAs: vi.fn(() => ({ hpas: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockReplicaSets: vi.fn(() => ({ replicasets: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockPVs: vi.fn(() => ({ pvs: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockResourceQuotas: vi.fn(() => ({ resourceQuotas: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockLimitRanges: vi.fn(() => ({ limitRanges: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockNetworkPolicies: vi.fn(() => ({ networkpolicies: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockNamespaces: vi.fn(() => ({ namespaces: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockOperatorSubscriptions: vi.fn(() => ({ subscriptions: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockServiceAccounts: vi.fn(() => ({ serviceAccounts: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockK8sRoles: vi.fn(() => ({ roles: [], isLoading: false, error: null, refetch: vi.fn() })),
+  mockK8sRoleBindings: vi.fn(() => ({ bindings: [], isLoading: false, error: null, refetch: vi.fn() })),
+}))
+
 vi.mock('../../../hooks/useDemoMode', () => ({
   useDemoMode: () => ({ isDemoMode: mockDemoMode() }),
   getDemoMode: () => mockDemoMode(),
   isDemoModeForced: false,
 }))
-
-const mockPodIssues = vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockEvents = vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockDeployments = vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockDeploymentIssues = vi.fn(() => ({ issues: [], isLoading: false, error: null, refetch: vi.fn() }))
 
 vi.mock('../../../hooks/useCachedData', () => ({
   useCachedPodIssues: (...args: unknown[]) => mockPodIssues(...args),
@@ -33,31 +92,6 @@ vi.mock('../../../hooks/useCachedData', () => ({
   useCachedDeployments: (...args: unknown[]) => mockDeployments(...args),
   useCachedDeploymentIssues: (...args: unknown[]) => mockDeploymentIssues(...args),
 }))
-
-const mockClusters = vi.fn(() => ({ clusters: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockPVCs = vi.fn(() => ({ pvcs: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockServices = vi.fn(() => ({ services: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockOperators = vi.fn(() => ({ operators: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockHelmReleases = vi.fn(() => ({ releases: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockConfigMaps = vi.fn(() => ({ configmaps: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockSecrets = vi.fn(() => ({ secrets: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockIngresses = vi.fn(() => ({ ingresses: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockNodes = vi.fn(() => ({ nodes: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockJobs = vi.fn(() => ({ jobs: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockCronJobs = vi.fn(() => ({ cronjobs: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockStatefulSets = vi.fn(() => ({ statefulsets: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockDaemonSets = vi.fn(() => ({ daemonsets: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockHPAs = vi.fn(() => ({ hpas: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockReplicaSets = vi.fn(() => ({ replicasets: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockPVs = vi.fn(() => ({ pvs: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockResourceQuotas = vi.fn(() => ({ resourceQuotas: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockLimitRanges = vi.fn(() => ({ limitRanges: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockNetworkPolicies = vi.fn(() => ({ networkpolicies: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockNamespaces = vi.fn(() => ({ namespaces: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockOperatorSubscriptions = vi.fn(() => ({ subscriptions: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockServiceAccounts = vi.fn(() => ({ serviceAccounts: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockK8sRoles = vi.fn(() => ({ roles: [], isLoading: false, error: null, refetch: vi.fn() }))
-const mockK8sRoleBindings = vi.fn(() => ({ bindings: [], isLoading: false, error: null, refetch: vi.fn() }))
 
 vi.mock('../../../hooks/mcp', () => ({
   useClusters: (...args: unknown[]) => mockClusters(...args),
@@ -91,8 +125,6 @@ vi.mock('../../../hooks/useMCS', () => ({
   useServiceImports: vi.fn(() => ({ imports: [], isLoading: false, error: null, refetch: vi.fn() })),
 }))
 
-// Track registrations
-const registeredHooks = new Map<string, (...args: unknown[]) => unknown>()
 vi.mock('../card/hooks/useDataSource', () => ({
   registerDataHook: vi.fn((name: string, fn: (...args: unknown[]) => unknown) => {
     registeredHooks.set(name, fn)

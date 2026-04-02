@@ -212,7 +212,9 @@ describe('useCrossplaneManagedResources', () => {
       }),
     )
 
-    const { result } = renderHook(() => useCrossplaneManagedResources())
+    // Use a unique cluster param to bypass the shared module-level cache
+    // which may have data from prior tests
+    const { result } = renderHook(() => useCrossplaneManagedResources('refetch-cluster'))
 
     // Wait for the initial fetch to be in progress
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())

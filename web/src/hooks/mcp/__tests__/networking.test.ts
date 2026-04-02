@@ -108,6 +108,9 @@ beforeEach(() => {
   mockIsAgentUnavailable.mockReturnValue(true)
   mockRegisterRefetch.mockReturnValue(vi.fn())
   mockClusterCacheRef.clusters = []
+  // Reset module-level servicesCache by calling the captured cache reset callback
+  const servicesReset = capturedCacheResets.get('services')
+  if (servicesReset) servicesReset()
   // Default: services REST fetch returns empty list
   globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -115,6 +118,9 @@ beforeEach(() => {
   })
   // Default: ingresses and networkpolicies REST fetch returns empty
   mockApiGet.mockResolvedValue({ data: { ingresses: [], networkpolicies: [] } })
+  // Re-clear localStorage after cache reset (which may have set items)
+  localStorage.clear()
+  localStorage.setItem('token', 'test-token')
 })
 
 afterEach(() => {

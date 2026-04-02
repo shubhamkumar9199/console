@@ -78,10 +78,18 @@ function makeRule(overrides: Partial<Omit<AlertRule, 'id' | 'createdAt' | 'updat
 }
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   localStorage.clear()
   vi.useRealTimers()
   vi.clearAllMocks()
   mockUseDemoMode.mockReturnValue({ isDemoMode: false })
+  // Re-stub globals after restoreAllMocks clears them
+  vi.stubGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() })
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 // ── useAlertsContext outside provider ────────────────────────────────────────
@@ -1278,6 +1286,7 @@ describe('deep coverage: saveAlerts quota handling', () => {
     const alerts = [makeAlert({ id: 'nq-1' })]
     localStorage.setItem('kc_alerts', JSON.stringify(alerts))
 
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const originalSetItem = localStorage.setItem.bind(localStorage)
     let throwCount = 0
     vi.spyOn(localStorage, 'setItem').mockImplementation((key: string, value: string) => {
@@ -1294,7 +1303,7 @@ describe('deep coverage: saveAlerts quota handling', () => {
       result.current.acknowledgeAlert('nq-1')
     })
 
-    expect(console.error).toHaveBeenCalled()
+    expect(errorSpy).toHaveBeenCalled()
   })
 })
 
