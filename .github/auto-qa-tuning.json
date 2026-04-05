@@ -61,18 +61,18 @@
     }
   },
   "weekly_insights": {
-    "best_pr_size": "L",
+    "best_pr_size": "S",
     "size_acceptance": {},
     "type_acceptance": {},
     "common_rejection_reasons": [
-      "- PR #3606: Superseded — the root cause was the Auto-QA grep pattern, not the source registrations. Fixed in #3619 by updating the grep to match unquoted object keys.",
-      "- PR #3604: Duplicate — already fixed and merged via #3613.",
-      "- PR #3599: Closing this PR as superseded. The card.position optional chaining fixes (3 of 4 files) were already applied to main via prior merges. The remaining fix (consolidating the duplicate useMCP import in Deploy.tsx) has been applied in PR #3749.",
-      "- PR #3579: Closing: this PR is investigation-only with no source code changes. The underlying issue (#3576) about Loader2 ReferenceError is addressed by PR #3578 which adds explicit Loader2 to the dynamic card sandbox scope.",
-      "- PR #3577: Closing: this PR is investigation-only with no source code changes. The underlying issue (#3575) about Loader2 ReferenceError is addressed by PR #3578 which adds explicit Loader2 to the dynamic card sandbox scope."
+      "- PR #4650: Closing — fixing directly.",
+      "- PR #4648: Closing — fixing directly.",
+      "- PR #4641: Closing — already fixed in PR #4642 (merged).",
+      "- PR #4640: Closing — already fixed in PR #4642 (merged).",
+      "- PR #4639: Closing — already fixed in PR #4642 (merged)."
     ],
     "best_change_type": "bug_fix",
-    "last_report_date": "2026-03-29"
+    "last_report_date": "2026-04-05"
   },
   "cncf_insights": {
     "last_scan_date": "2026-04-01",
